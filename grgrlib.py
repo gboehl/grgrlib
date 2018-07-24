@@ -38,9 +38,10 @@ def invertible_subm(A):
     return res
 
 
+"""     ## old version using eigenvector-eigenvalue decomposition
 def re_bc(N, d_endo):
 
-    eigvals, eigvecs 	= nl.eig(nl.inv(N))
+    eigvals, eigvecs 	= nl.eig(N)
 
     idx             	= np.abs(eigvals).argsort()[::-1]
 
@@ -48,7 +49,28 @@ def re_bc(N, d_endo):
 
     res     = nl.inv(eigvecs[:d_endo,:d_endo]) @ eigvecs[:d_endo,d_endo:]
 
+    if not fast0(res.imag,2):
+        warnings.warn('Non-neglible imaginary parts in OMEGA')
+
     return -res.real
+    """
+
+
+def re_bc(N, d_endo):
+
+    n   = N.shape[0]
+
+    MM, PP, alp, bet, Q, Z    = sl.ordqz(N,np.eye(n),sort='iuc')
+
+
+    if not fast0(Q @ MM @ Z.T - N, 2):
+        warnings.warn('Numerical errors in QZ')
+
+    Z21     = Z.T[-d_endo:,:d_endo]
+    Z22     = Z.T[-d_endo:,d_endo:]
+
+    return -nl.inv(Z21) @ Z22
+
 
 def fast0(A, mode=None):
 
@@ -61,6 +83,7 @@ def fast0(A, mode=None):
     else:
         return np.allclose(A, 0)
 
+
 def desingularize(M, P, D, vv, b=None, c=None, return_sub_ind=False):
     """
     Given a linear dynamic system of the form
@@ -72,6 +95,10 @@ def desingularize(M, P, D, vv, b=None, c=None, return_sub_ind=False):
     this algorythm reduces the vector of endogenous variables such that P is nonsingular.
     'vv' is a tuple containing the names of the variables in x_t (as dsge.symbols.Variables) and likewise the names of the variables in y_t.
     """
+    ## all this is might simpler be done by QZ
+    ## but not sure about how to obtain b & c with QZ
+
+    ## get_z is probably completely unnecessary since z_t is included in y_t
 
     vv_x, vv_v  = vv
     dim_x       = len(vv_x)
@@ -129,10 +156,11 @@ def desingularize(M, P, D, vv, b=None, c=None, return_sub_ind=False):
     ph2     = p3 - p2 @ m22_inv @ m23
 
     D2      = d1 - m12 @ m22_inv @ d2
-    if not fast0(b2 @ m22_inv @ d2, 2):
-        warnings.warn('Potential approximation error trough ommited shocks in the constraint')
 
     if type(c) == np.ndarray:
+        if not fast0(b2 @ m22_inv @ d2, 2):
+            warnings.warn('Potential approximation error trough ommited shocks in the constraint')
+
         bh1     = b1 - b2 @ m22_inv @ m21
         bh2     = b3 - b2 @ m22_inv @ m23
 
@@ -168,6 +196,7 @@ def desingularize(M, P, D, vv, b=None, c=None, return_sub_ind=False):
 
 
 def get_sys(mod, par):
+    ## get_z is probably completely unnecessary since z_t is included in y_t
 
     const_var   = mod.const_var
 
