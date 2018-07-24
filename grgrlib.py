@@ -10,8 +10,8 @@ sys.path.append('/home/gboehl/rsh/bs18/code/')
 import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
-import matplotlib.pyplot as plt
 import warnings
+from numba import njit
 
 def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
@@ -202,7 +202,7 @@ def get_sys(mod, par):
 
     vv_v        = np.array(mod.variables)
     vv_x        = np.array(mod.variables)
-    vv          = (vv_x, vv_v)
+    vv          = vv_x, vv_v
 
     dim         = len(vv_x)
 
@@ -260,8 +260,70 @@ def get_sys(mod, par):
     if not len(vv3[0]) == sum(eig(N) >= 1):
         warnings.warn('\n   BC *not* satisfied!\n')
 
+    mod.vv          = vv3
     if const_var:
-        return MM, PP, DD, bb, cc, vv3, get_z3
+        return MM, PP, DD, bb, cc, get_z3
     else:
-        return MM, PP, DD, vv3, get_z3
+        return MM, PP, DD, get_z3
 
+@njit(cache=True)
+def subt(A, B):
+	res 	= A
+	for i in range(len(A)):
+		for j in range(len(A)):
+			res[i][j] = A[i][j] - B[i][j]
+	return res
+
+@njit(cache=True)
+def LL_jit(mod,l, k, s, v):
+    N, J, A, JIN, Mcx, dim_x, nr_dims, IN 	= mod
+    ## as in paper
+    k0 		= max(s-l, 0)
+    l0 		= min(l, s)
+    matrices 		= nl.matrix_power(N,k0) @ nl.matrix_power(A,l0)
+    N_k 		    = nl.matrix_power(N.copy(),k0)
+    subt_part       = subt(np.identity(nr_dims), N_k)
+    term			= IN @ subt_part @ Mcx
+    return matrices @ np.hstack((SS_jit(mod[:7], l, k, v), v)) + term
+
+@njit(cache=True)
+def LL_jit(mod,l, k, s, v):
+    N, J, A, JIN, Mcx, dim_x, nr_dims, IN 	= mod
+    ## as in paper
+    if k == 0:
+        l = s
+    k0 		= max(s-l, 0)
+    l0 		= min(l, s)
+    matrices 		= nl.matrix_power(N,k0) @ nl.matrix_power(A,l0)
+    N_k 		    = nl.matrix_power(N.copy(),k0)
+    subt_part       = subt(np.identity(nr_dims), N_k)
+    term			= IN @ subt_part @ Mcx
+    return matrices @ np.hstack((SS_jit(mod[:7], l, k, v), v)) + term
+
+@njit(cache=True)
+def boehlgorithm_jit(vals, v, k_max = 20):
+
+    N, J, A, JIN, Mcx, dim_x, nr_dims, IN, P, b, x_bar, c = vals
+
+    l, k 		= 0, 0
+    l1, k1 		= 1, 1
+
+    while (l, k) != (l1, k1):
+        l1, k1 		= l, k
+        if l: l 		-= 1
+        while np.dot(b,LL_jit(vals[:8],l, k, l, v)) - x_bar > 0:
+            if l > k_max:
+                l = 0
+                break
+            l 	+= 1
+        if (l) == (l1):
+            if k: k 		-= 1
+            while np.dot(b,LL_jit(vals[:8], l, k, l+k, v)) - x_bar < 0: 
+                k +=1
+                if k > k_max:
+                    # warnings.warn('k_max reached, exiting')
+                    print('k_max reached, exiting')
+                    break
+
+    v_new 	= LL_jit(vals[:8], l, k, 1, v)[dim_x:]
+    return v_new, (l, k)
