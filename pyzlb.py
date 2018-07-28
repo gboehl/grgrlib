@@ -17,7 +17,7 @@ from numba import njit
 @njit(cache=True)
 def preprocess(vals, ll_max = 5, kk_max 	= 30):
 
-    N, J, A, IN, cx, dim_x, dim_y, b, x_bar  = vals
+    N, J, A, IN, cx, dim_x, dim_y, b, x_bar, D  = vals
 
     dim_v   = dim_y - dim_x
 
@@ -44,14 +44,6 @@ def create_SS(vals, l, k):
     c_JN 		= J @ IN @ temp3 @ cx
     return -nl.inv(JN[:,:dim_x]) @ JN[:,dim_x:], -nl.inv(JN[:,:dim_x]) @ c_JN
 
-@njit(cache=True)
-def SS_jit(vals, l, k, v):
-    N, J, A, IN, cx, dim_x, dim_y = vals
-    N_k 		= nl.matrix_power(N.copy(),k)
-    JN			= J @ N_k @ nl.matrix_power(A.copy(),l)
-    temp3 		= subt(np.eye(dim_y), N_k)
-    c_JN 		= J @ IN @ temp3 @ cx
-    return -nl.inv(JN[:,:dim_x]) @ JN[:,dim_x:] @ v - nl.inv(JN[:,:dim_x]) @ c_JN
 
 @njit(cache=True)
 def create_LL(vals, l, k, s):
@@ -76,7 +68,17 @@ def LL_jit(l, k, s, v, vals):
     matrices 		= N_k @ nl.matrix_power(A.copy(),l0)
     subt_part       = subt(np.identity(dim_y), N_k)
     term			= IN @ subt_part @ cx
-    return matrices @ np.hstack((SS_jit(vals[:7], l, k, v), v)) + term
+    # return matrices @ np.hstack((SS_jit(vals[:7], l, k, v), v)) + term
+    return matrices[:,:dim_x] @ SS_jit(vals[:7], l, k, v) + matrices[:,dim_x:] @ v + term
+
+@njit(cache=True)
+def SS_jit(vals, l, k, v):
+    N, J, A, IN, cx, dim_x, dim_y = vals
+    N_k 		= nl.matrix_power(N.copy(),k)
+    JN			= J @ N_k @ nl.matrix_power(A.copy(),l)
+    temp3 		= subt(np.eye(dim_y), N_k)
+    c_JN 		= J @ IN @ temp3 @ cx
+    return -nl.inv(JN[:,:dim_x]) @ JN[:,dim_x:] @ v - nl.inv(JN[:,:dim_x]) @ c_JN 
 
 @njit(cache=True)
 def LL_pp(l, k, s, v, precalc_mat):
@@ -86,25 +88,17 @@ def LL_pp(l, k, s, v, precalc_mat):
     dim_x   = SS_mat.shape[2]
 
     SS 	= SS_mat[l,k] @ v + SS_term[l,k]
-    if k:
-        matrices 	= LL_mat[l,s]
-        term 		= LL_term[l,s]
-    else:
-        matrices 	= LL_mat[s,s]
-        term 		= LL_term[s,s]
+    if not k:
+        l = s
+    matrices 	= LL_mat[l,s]
+    term 		= LL_term[l,s]
     return matrices[:,:dim_x] @ SS + matrices[:,dim_x:] @ v + term
 
 
-def boehlgorithm(model_obj, v):
-    if hasattr(model_obj, 'precalc_mat'):
-        return boehlgorithm_pp(model_obj.sys, v, model_obj.precalc_mat)
-    else:
-        return boehlgorithm_jit(model_obj.sys, v)
-
 @njit(cache=True)
-def boehlgorithm_pp(vals, v, precalc_mat, k_max=20):
+def boehlgorithm_pp(vals, v, precalc_mat):
 
-    N, J, A, IN, cx, dim_x, dim_y, b, x_bar  = vals
+    N, J, A, IN, cx, dim_x, dim_y, b, x_bar, D  = vals
 
     l, k 		= 0, 0
     l1, k1 		= 1, 1
@@ -124,6 +118,7 @@ def boehlgorithm_pp(vals, v, precalc_mat, k_max=20):
                     break
                 l 	+= 1
         else:
+            print('out')
             l = 0
         if (l) == (l1):
             if k: k 		-= 1
@@ -140,17 +135,16 @@ def boehlgorithm_pp(vals, v, precalc_mat, k_max=20):
 @njit(cache=True)
 def boehlgorithm_jit(vals, v, k_max = 20):
 
-    N, J, A, IN, cx, dim_x, dim_y, b, x_bar  = vals
-
+    N, J, A, IN, cx, dim_x, dim_y, b, x_bar, D  = vals
+    
     l, k 		= 0, 0
     l1, k1 		= 1, 1
 
     cnt     = 0
     while (l, k) != (l1, k1):
         cnt += 1
-        print(cnt, l, k)
         l1, k1 		= l, k
-        if l: l 		-= 1
+        if l: l -= 1
         if cnt < 10e4:
             while b @ LL_jit(l, k, l, v, vals[:7]) - x_bar > 0:
                 if l > k_max:
@@ -169,4 +163,14 @@ def boehlgorithm_jit(vals, v, k_max = 20):
                     break
 
     v_new 	= LL_jit(l, k, 1, v, vals[:7])[dim_x:]
+
     return v_new, (l, k)
+
+def boehlgorithm(model_obj, v):
+    if hasattr(model_obj, 'precalc_mat'):
+        return boehlgorithm_pp(model_obj.sys, v, model_obj.precalc_mat)
+    else:
+        return boehlgorithm_jit(model_obj.sys, v)
+
+
+
