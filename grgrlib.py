@@ -103,24 +103,28 @@ def get_sys(self, par):
 
     dim_v   = len(vv_v)
 
-    AA  = self.AA(par) # forward
-    BB  = self.BB(par) # contemp
-    CC  = self.CC(par) # backward
+    ## obtain matrices from pydsge
+    ## this can be further accelerated by getting them directly from the equations in pydsge
+    AA  = self.AA(par)              # forward
+    BB  = self.BB(par)              # contemp
+    CC  = self.CC(par)              # backward
+    b   = self.bb(par).flatten()    # constraint
 
+    ## define transition shocks -> state
     D   = self.PSI(par)
     D2  = BB.T @ D
 
-    b           = self.bb(par).flatten()
-
+    ## mask those vars that are either forward looking or part of the constraint
     in_x       = ~fast0(AA, 0) | ~fast0(b[:dim_v])
 
-    ## suit to x/y system
+    ## reduce x vector
     vv_x2   = vv_x[in_x]
     A1      = AA[:,in_x]
     b1      = np.hstack((b[:dim_v][in_x], b[dim_v:]))
 
     dim_x   = len(vv_x2)
 
+    ## define actual matrices
     M       = np.block([[np.zeros(A1.shape), CC], 
                         [np.eye(dim_x), np.zeros((dim_x,dim_v))]])
 
@@ -129,17 +133,18 @@ def get_sys(self, par):
 
     c_arg       = list(vv_x2).index(self.const_var)
 
+    ## c contains information on how the constraint var affects the system
     c_M     = M[:,c_arg]
     c_P     = P[:,c_arg]
 
+    ## get rid of constrained var
     b2      = np.delete(b1, c_arg)
     M1      = np.delete(M, c_arg, 1)
     P1      = np.delete(P, c_arg, 1)
-
     vv_x3   = np.delete(vv_x2, c_arg)
 
+    ## decompose P in singular & nonsingular rows
     U, s, V     = nl.svd(P1)
-
     s0  = fast0(s)
 
     P2  = np.diag(s) @ V
@@ -148,19 +153,18 @@ def get_sys(self, par):
     c1  = U.T @ c_M
 
     if not fast0(c1[s0], 2) or not fast0(U.T[s0] @ c_P, 2):
-        ## write propper warnings
         warnings.warn('\nNot implemented: the system depends directly or indirectly on whether the constraint holds in the future or not.\n')
         
-    ## actual desingularization
+    ## actual desingularization by iterating equations in M forward
     P2[s0]  = M2[s0]
 
-    ## create all the crazy stuff I need
     try:
         x_bar       = par[[p.name for p in self.parameters].index('x_bar')]
     except ValueError:
-        warnings.warn("x_bar (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.")
+        warnings.warn("\nx_bar (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.\n")
         x_bar       = -1
 
+    ## create the stuff that the algorithm needs
     N       = nl.inv(P2) @ M2 
     A       = nl.inv(P2) @ (M2 + np.outer(c1,b2))
 
@@ -172,23 +176,25 @@ def get_sys(self, par):
     J 			= np.hstack((np.eye(dim_x), -OME))
     cx 		    = nl.inv(P2) @ c1*x_bar
 
+    ## add everything to the DSGE object
     self.vv     = vv_x3, vv_v
-
     self.par    = par
-
     self.sys 	= N, J, A, cx, dim_x, dim_v + dim_x, b2, x_bar, D2
 
 
-def irfs(mod, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
+def irfs(self, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
+    ## plots impule responses and returns the time series
 
-    shk_vec             = np.zeros(len(mod.shocks))
-    shock_arg           = [v.name for v in mod.shocks].index(shock)
+    ## should take tuples of (shock, size, timing)
+
+    shk_vec             = np.zeros(len(self.shocks))
+    shock_arg           = [v.name for v in self.shocks].index(shock)
     shk_vec[shock_arg]  = shocksize
 
-    st_vec          = mod.sys[-1] @ shk_vec
+    st_vec          = self.sys[-1] @ shk_vec
     shk_process     = np.where(~fast0(st_vec))[0]
 
-    labels      = [v.name.replace('_','') for v in mod.vv[1]]
+    labels      = [v.name.replace('_','') for v in self.vv[1]]
     args_see    = [labels.index(v) for v in wannasee]
 
     care_for    = np.unique(np.hstack((args_see,shk_process)))
@@ -197,7 +203,7 @@ def irfs(mod, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
     Y   = []
     superflag   = False
     for t in range(30):
-        st_vec, (k,l), flag     = boehlgorithm(mod, st_vec)
+        st_vec, (k,l), flag     = boehlgorithm(self, st_vec)
         if flag: 
             superflag   = True
         X.append(st_vec[care_for])
@@ -219,7 +225,8 @@ def irfs(mod, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
     plt.tight_layout()
     plt.show()
 
-    return Y
+    self.ts     = Y
+
 
 @njit(cache=True)
 def geom_series(M, n):
@@ -228,7 +235,6 @@ def geom_series(M, n):
         gs_add(res,nl.matrix_power(M,i))
     return res
 
-
 @njit(cache=True)
 def gs_add(A, B):
 	for i in range(len(A)):
@@ -236,4 +242,5 @@ def gs_add(A, B):
 			A[i][j] += B[i][j]
 
 
-dsge.DSGE.DSGE.get_sys   = get_sys
+dsge.DSGE.DSGE.get_sys  = get_sys
+dsge.DSGE.DSGE.irfs     = irfs
