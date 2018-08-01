@@ -103,28 +103,28 @@ def get_sys(self, par):
 
     dim_v   = len(vv_v)
 
-    A   = self.AA(par) # forward
-    B   = self.BB(par) # contemp
-    C   = self.CC(par) # backward
+    AA  = self.AA(par) # forward
+    BB  = self.BB(par) # contemp
+    CC  = self.CC(par) # backward
 
     D   = self.PSI(par)
-    D2  = B.T @ D
+    D2  = BB.T @ D
 
     b           = self.bb(par).flatten()
 
-    in_x       = ~fast0(A, 0) | ~fast0(b[:dim_v])
+    in_x       = ~fast0(AA, 0) | ~fast0(b[:dim_v])
 
     ## suit to x/y system
     vv_x2   = vv_x[in_x]
-    A1      = A[:,in_x]
+    A1      = AA[:,in_x]
     b1      = np.hstack((b[:dim_v][in_x], b[dim_v:]))
 
     dim_x   = len(vv_x2)
 
-    M       = np.block([[np.zeros(A1.shape), C], 
+    M       = np.block([[np.zeros(A1.shape), CC], 
                         [np.eye(dim_x), np.zeros((dim_x,dim_v))]])
 
-    P       = np.block([[A1, -B],
+    P       = np.block([[A1, -BB],
                         [np.zeros((dim_x,dim_x)), np.eye(dim_v)[in_x]]])
 
     c_arg       = list(vv_x2).index(self.const_var)
@@ -197,8 +197,7 @@ def irfs(mod, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
     Y   = []
     superflag   = False
     for t in range(30):
-        st_vec, kl, flag     = boehlgorithm(mod, st_vec)
-        # print(kl)
+        st_vec, (k,l), flag     = boehlgorithm(mod, st_vec)
         if flag: 
             superflag   = True
         X.append(st_vec[care_for])
