@@ -195,12 +195,18 @@ def irfs(mod, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
 
     X   = []
     Y   = []
+    superflag   = False
     for t in range(30):
-        st_vec, _   = boehlgorithm(mod, st_vec)
+        st_vec, _, flag     = boehlgorithm(mod, st_vec)
+        if flag: 
+            superflag   = True
         X.append(st_vec[care_for])
         Y.append(st_vec)
     X   = np.array(X)
     Y   = np.array(Y)
+
+    if superflag:
+        warnings.warn('Numerical errors in boehlgorithm. Check for existence conditions')
 
     fig, ax     = plt.subplots()
     for i, l in enumerate(care_for):

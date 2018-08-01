@@ -104,7 +104,7 @@ def SS_jit(vals, l, k, v):
 
 
 @njit(cache=True)
-def boehlgorithm_pp(vals, v, precalc_mat):
+def boehlgorithm_pp(vals, v, precalc_mat, max_cnt):
 
     N, J, A, cx, dim_x, dim_y, b, x_bar, D  = vals
 
@@ -115,19 +115,19 @@ def boehlgorithm_pp(vals, v, precalc_mat):
     k_max   = precalc_mat[0].shape[1] 
 
     cnt     = 0
+    flag    = False
     while (l, k) != (l1, k1):
         cnt += 1
+        if cnt  > max_cnt:
+            flag    = True
+            break
         l1, k1 		= l, k
         if l: l 		-= 1
-        if cnt < 10e4:
-            while b @ LL_pp(l, k, l, v, precalc_mat) - x_bar > 0:
-                if l >= l_max:
-                    l = 0
-                    break
-                l 	+= 1
-        else:
-            print('out')
-            l = 0
+        while b @ LL_pp(l, k, l, v, precalc_mat) - x_bar > 0:
+            if l >= l_max:
+                l = 0
+                break
+            l 	+= 1
         if (l) == (l1):
             if k: k 		-= 1
             while b @ LL_pp(l, k, l+k, v, precalc_mat) - x_bar < 0: 
@@ -138,10 +138,10 @@ def boehlgorithm_pp(vals, v, precalc_mat):
 
     v_new 	= LL_pp(l, k, 1, v, precalc_mat)[dim_x:]
 
-    return v_new, (l, k)
+    return v_new, (l, k), flag
 
 @njit(cache=True)
-def boehlgorithm_jit(vals, v, k_max = 20):
+def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 5):
 
     N, J, A, cx, dim_x, dim_y, b, x_bar, D  = vals
     
@@ -149,19 +149,19 @@ def boehlgorithm_jit(vals, v, k_max = 20):
     l1, k1 		= 1, 1
 
     cnt     = 0
+    flag    = False
     while (l, k) != (l1, k1):
         cnt += 1
+        if cnt  > max_cnt:
+            flag    = True
+            break
         l1, k1 		= l, k
         if l: l -= 1
-        if cnt < 10e4:
-            while b @ LL_jit(l, k, l, v, vals[:6]) - x_bar > 0:
-                if l > k_max:
-                    l = 0
-                    break
-                l 	+= 1
-        else:
-            print('out')
-            l   = 0
+        while b @ LL_jit(l, k, l, v, vals[:6]) - x_bar > 0:
+            if l > l_max:
+                l       = 0
+                break
+            l 	+= 1
         if (l) == (l1):
             if k: k 		-= 1
             while b @ LL_jit(l, k, l+k, v, vals[:6]) - x_bar < 0: 
@@ -172,13 +172,13 @@ def boehlgorithm_jit(vals, v, k_max = 20):
 
     v_new 	= LL_jit(l, k, 1, v, vals[:6])[dim_x:]
 
-    return v_new, (l, k)
+    return v_new, (l, k), flag
 
-def boehlgorithm(model_obj, v):
+def boehlgorithm(model_obj, v, max_cnt = 5e1):
     if hasattr(model_obj, 'precalc_mat'):
         return boehlgorithm_pp(model_obj.sys, v, model_obj.precalc_mat)
     else:
-        return boehlgorithm_jit(model_obj.sys, v)
+        return boehlgorithm_jit(model_obj.sys, v, max_cnt)
 
 dsge.DSGE.DSGE.preprocess   = preprocess
 
