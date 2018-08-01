@@ -176,7 +176,7 @@ def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 5):
 
 def boehlgorithm(model_obj, v, max_cnt = 5e1):
     if hasattr(model_obj, 'precalc_mat'):
-        return boehlgorithm_pp(model_obj.sys, v, model_obj.precalc_mat)
+        return boehlgorithm_pp(model_obj.sys, v, model_obj.precalc_mat, max_cnt)
     else:
         return boehlgorithm_jit(model_obj.sys, v, max_cnt)
 
