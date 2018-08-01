@@ -197,7 +197,8 @@ def irfs(mod, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
     Y   = []
     superflag   = False
     for t in range(30):
-        st_vec, _, flag     = boehlgorithm(mod, st_vec)
+        st_vec, kl, flag     = boehlgorithm(mod, st_vec)
+        # print(kl)
         if flag: 
             superflag   = True
         X.append(st_vec[care_for])
