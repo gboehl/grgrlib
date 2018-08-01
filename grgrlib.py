@@ -12,6 +12,7 @@ import numpy.linalg as nl
 import scipy.linalg as sl
 import warnings
 from pyzlb import *
+import dsge
 import matplotlib.pyplot as plt
 from numba import njit
 
@@ -92,160 +93,90 @@ def fast0(A, mode=None):
     else:
         return np.allclose(A, 0)
 
+def get_sys(self, par):
 
-def desingularize(M, P, vv, b=None, c=None):
-    """
-    Given a linear dynamic system of the form
-
-          | x_t     |      | E_t x_{t+1} |
-        M |         |  = P |             |
-          | y_{t-1} |      |     y_t     |
-          
-    this algorythm reduces the vector of endogenous variables such that P is nonsingular.
-    'vv' is a tuple containing the names of the variables in x_t (as dsge.symbols.Variables) and likewise the names of the variables in y_t.
-    """
-    ## all this is might simpler be done by QZ
-    ## but not sure about how to obtain b & c with QZ
-
-    vv_x, vv_v  = vv
-    dim_x       = len(vv_x)
-
-    ## find singular rows of old matrices
-    U, s, V     = nl.svd(P)
-
-    s0  = fast0(s)
-    if not sum(s0):
-        print('P is probably already nonsingular')
-        return M, P, vv, np.empty(0)
-
-    P1  = np.diag(s) @ V
-    M1  = U.T @ M
-
-    c   = U.T @ c
-
-    ## deconstructing old matrices
-    m23     = M1[s0][:,dim_x:]
-    m21_22  = M1[s0][:,:dim_x]
-    m13     = M1[~s0][:,dim_x:]
-    m11_12  = M1[~s0][:,:dim_x]
-
-    p3      = P1[~s0][:,dim_x:]
-    p1_2    = P1[~s0][:,:dim_x]
-
-    ## find variables in z_t
-    sub_ind     = invertible_subm(m21_22)
-
-    ## collecting building blocks
-    m11         = m11_12[:,~sub_ind]
-    m12         = m11_12[:,sub_ind]
-    m21         = m21_22[:,~sub_ind]
-    m22         = m21_22[:,sub_ind]
-    p1          = p1_2[:,~sub_ind]
-    p2          = p1_2[:,sub_ind]
-
-    if type(c) == np.ndarray:
-        b1          = b[:dim_x][~sub_ind]
-        b2          = b[:dim_x][sub_ind]
-        b3          = b[dim_x:]
-
-    ## just a tiny little bit faster
-    m22_inv     = nl.inv(m22)
-
-    ## constructing building blocks
-    mh1     = m11 - m12 @ m22_inv @ m21
-    mh2     = m13 - m12 @ m22_inv @ m23
-    ph1     = p1 - p2 @ m22_inv @ m21
-    ph2     = p3 - p2 @ m22_inv @ m23
-
-    ## constructing final matrices
-    M2  = np.block([[mh1, mh2]])
-    P2  = np.block([[ph1, ph2]])
-
-    bh1     = b1 - b2 @ m22_inv @ m21
-    bh2     = b3 - b2 @ m22_inv @ m23
-
-    c1  = c[~s0]
-    c2  = m22_inv @ c[s0]
-    
-    if not fast0(c2,2):
-        warnings.warn('z_t also depends on the constrained variable')
-        if not fast0(p2 @ c2,2):
-            warnings.warn('System further depends on expectations of constrained value trough z_t')
-
-    bb2 = np.hstack((bh1, bh2))
-
-    ## collecting information about the new state system
-    vv2         = vv_x[~sub_ind], vv_x[sub_ind], vv_v
-    
-    return M2, P2, vv2, bb2, c1
-
-
-def get_sys(mod, par):
-
-    const_var   = mod.const_var
-
-    if not const_var:
+    if not self.const_var:
         warnings.warn('Code is only meant to work with OBCs')
 
-    vv_v        = np.array(mod.variables)
-    vv_x        = np.array(mod.variables)
-    vv          = vv_x, vv_v
+    vv_v    = np.array(self.variables)
+    vv_x    = np.array(self.variables)
 
-    dim         = len(vv_x)
+    dim_v   = len(vv_v)
 
-    A   = mod.AA(par) # forward
-    B   = mod.BB(par) # contemp
-    C   = mod.CC(par) # backward
-    D   = mod.PSI(par)
+    A   = self.AA(par) # forward
+    B   = self.BB(par) # contemp
+    C   = self.CC(par) # backward
+
+    D   = self.PSI(par)
     D2  = B.T @ D
 
-    const_arg   = list(vv_x).index(const_var)
-    b           = mod.bb(par).flatten()
-    if not fast0(A[:,const_arg],2):
-        warnings.warn('\n   Not implemented: system depends on expectations of constrained variable\n')
+    b           = self.bb(par).flatten()
 
-    M       = np.block([[B,C], [np.eye(dim), np.zeros((dim,dim))]])
-    P       = np.block([[A,np.zeros(C.shape)],[np.zeros((dim,dim)), np.eye(dim)]])
+    in_x       = ~fast0(A, 0) | ~fast0(b[:dim_v])
 
-    c   = M[:,const_arg]
-    M   = np.delete(M, const_arg, 1)
-    P   = np.delete(P, const_arg, 1)
-    b2      = -np.delete(b, const_arg)/b[const_arg]
-    vv_x    = np.delete(vv_x, const_arg)
+    ## suit to x/y system
+    vv_x2   = vv_x[in_x]
+    A1      = A[:,in_x]
+    b1      = np.hstack((b[:dim_v][in_x], b[dim_v:]))
 
-    M3, P3, vv2, b3, c2  = desingularize(M, P, (vv_x, vv_v), b2, c)
+    dim_x   = len(vv_x2)
 
-    if np.abs(nl.det(P3)) < 1e-3:
+    M       = np.block([[np.zeros(A1.shape), C], 
+                        [np.eye(dim_x), np.zeros((dim_x,dim_v))]])
 
-        M3, P3, vv3, b3, c2     = desingularize(M3, P3, (vv2[0],vv2[2]), b3, c2)
+    P       = np.block([[A1, -B],
+                        [np.zeros((dim_x,dim_x)), np.eye(dim_v)[in_x]]])
 
-        vv_z    = np.hstack((vv2[1], vv3[1]))
-        vv3     = vv3[0], vv_z, vv3[2]
-    else:
-        vv3     = vv2
+    c_arg       = list(vv_x2).index(self.const_var)
 
-    dim_x   = len(vv3[0])
-    dim_y   = len(vv3[2]) + dim_x
+    c_M     = M[:,c_arg]
+    c_P     = P[:,c_arg]
 
-    A   = nl.inv(P3) @ (M3 + np.outer(c2,b3))
-    N   = nl.inv(P3) @ M3
+    b2      = np.delete(b1, c_arg)
+    M1      = np.delete(M, c_arg, 1)
+    P1      = np.delete(P, c_arg, 1)
 
-    if not len(vv3[0]) == sum(eig(A) >= 1):
-        warnings.warn('\n   BC *not* satisfied!\n')
+    vv_x3   = np.delete(vv_x2, c_arg)
 
+    U, s, V     = nl.svd(P1)
+
+    s0  = fast0(s)
+
+    P2  = np.diag(s) @ V
+    M2  = U.T @ M1
+
+    c1  = U.T @ c_M
+
+    if not fast0(c1[s0], 2) or not fast0(U.T[s0] @ c_P, 2):
+        ## write propper warnings
+        warnings.warn('\nNot implemented: the system depends directly or indirectly on whether the constraint holds in the future or not.\n')
+        
+    ## actual desingularization
+    P2[s0]  = M2[s0]
+
+    ## create all the crazy stuff I need
     try:
-        x_bar       = par[[p.name for p in mod.parameters].index('x_bar')]
+        x_bar       = par[[p.name for p in self.parameters].index('x_bar')]
     except ValueError:
         warnings.warn("x_bar (maximum value of the constraint) not specified. Assuming x_bar = -1 for now.")
         x_bar       = -1
-        
+
+    N       = nl.inv(P2) @ M2 
+    A       = nl.inv(P2) @ (M2 + np.outer(c1,b2))
+
+    if sum(eig(A).round(3) >= 1) - len(vv_x3):
+        warnings.warn('BC *not* satisfied.')
+
+    dim_x       = len(vv_x3)
     OME         = re_bc(A, dim_x)
     J 			= np.hstack((np.eye(dim_x), -OME))
-    cx 		    = nl.inv(P3) @ c2*x_bar
-    IN 			= nl.inv(np.identity(dim_y) - N)
+    cx 		    = nl.inv(P2) @ c1*x_bar
 
-    mod.vv      = vv3
-    mod.sys 	= N, J, A, IN, cx, dim_x, dim_y, b3, x_bar, D2
+    self.vv     = vv_x3, vv_v
+
+    self.par    = par
+
+    self.sys 	= N, J, A, cx, dim_x, dim_v + dim_x, b2, x_bar, D2
 
 
 def irfs(mod, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
@@ -257,7 +188,7 @@ def irfs(mod, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
     st_vec          = mod.sys[-1] @ shk_vec
     shk_process     = np.where(~fast0(st_vec))[0]
 
-    labels      = [v.name.replace('_','') for v in mod.vv[2]]
+    labels      = [v.name.replace('_','') for v in mod.vv[1]]
     args_see    = [labels.index(v) for v in wannasee]
 
     care_for    = np.unique(np.hstack((args_see,shk_process)))
@@ -284,3 +215,19 @@ def irfs(mod, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
 
     return Y
 
+@njit(cache=True)
+def geom_series(M, n):
+    res  = np.zeros(M.shape)
+    for i in range(n):
+        gs_add(res,nl.matrix_power(M,i))
+    return res
+
+
+@njit(cache=True)
+def gs_add(A, B):
+	for i in range(len(A)):
+		for j in range(len(A)):
+			A[i][j] += B[i][j]
+
+
+dsge.DSGE.DSGE.get_sys   = get_sys

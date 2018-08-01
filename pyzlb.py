@@ -11,13 +11,14 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import warnings
+import dsge
 from grgrlib import *
 from numba import njit
 
 @njit(cache=True)
-def preprocess(vals, ll_max = 5, kk_max 	= 30):
+def preprocess_jit(vals, ll_max, kk_max):
 
-    N, J, A, IN, cx, dim_x, dim_y, b, x_bar, D  = vals
+    N, J, A, cx, dim_x, dim_y, b, x_bar, D  = vals
 
     dim_v   = dim_y - dim_x
 
@@ -29,56 +30,38 @@ def preprocess(vals, ll_max = 5, kk_max 	= 30):
 
     for ll in range(ll_max):
         for kk in range(kk_max):
-            SS_mat[ll,kk], SS_term[ll,kk] 	= create_SS(vals[:7],ll,kk)
+            SS_mat[ll,kk], SS_term[ll,kk] 	= create_SS(vals[:6],ll,kk)
         for ss in range(ss_max):
-            if ss >= ll-1: LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:7],ll,0,ss)
+            if ss >= ll-1: LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:6],ll,0,ss)
 
     return SS_mat, SS_term, LL_mat, LL_term
 
+def preprocess(self, ll_max = 5, kk_max = 30):
+    self.precalc_mat    = preprocess_jit(self.sys, ll_max, kk_max)
+
+
 @njit(cache=True)
 def create_SS(vals, l, k):
-    N, J, A, IN, cx, dim_x, dim_y = vals
+    N, J, A, cx, dim_x, dim_y = vals
     N_k 		= nl.matrix_power(N.copy(),k)
-    JN			= J @ N_k @ nl.matrix_power(A.copy(), l)
-    temp3 		= subt(np.eye(dim_y), N_k)
-    c_JN 		= J @ IN @ temp3 @ cx
-    return -nl.inv(JN[:,:dim_x]) @ JN[:,dim_x:], -nl.inv(JN[:,:dim_x]) @ c_JN
+    A_k         = nl.matrix_power(A.copy(),l)
+    JN			= J @ N_k @ A_k
+    term 		= J @ geom_series(N, k) @ cx
+    core        = -nl.inv(JN[:,:dim_x]) 
+    return core @ JN[:,dim_x:], core @ term 
 
 
 @njit(cache=True)
 def create_LL(vals, l, k, s):
-    N, J, A, IN, cx, dim_x, dim_y = vals
+    N, J, A, cx, dim_x, dim_y = vals
+    ## as in paper
     k0 		= max(s-l, 0)
     l0 		= min(l, s)
     N_k 		    = nl.matrix_power(N.copy(),k0)
     matrices 		= N_k @ nl.matrix_power(A.copy(),l0)
-    subt_part       = subt(np.identity(dim_y), N_k)
-    term			= IN @ subt_part @ cx
+    term			= geom_series(N, k0) @ cx
     return matrices, term
 
-@njit(cache=True)
-def LL_jit(l, k, s, v, vals):
-    N, J, A, IN, cx, dim_x, dim_y = vals
-    ## as in paper
-    if k == 0:
-        l = s
-    k0 		= max(s-l, 0)
-    l0 		= min(l, s)
-    N_k 		    = nl.matrix_power(N.copy(),k0)
-    matrices 		= N_k @ nl.matrix_power(A.copy(),l0)
-    subt_part       = subt(np.identity(dim_y), N_k)
-    term			= IN @ subt_part @ cx
-    # return matrices @ np.hstack((SS_jit(vals[:7], l, k, v), v)) + term
-    return matrices[:,:dim_x] @ SS_jit(vals[:7], l, k, v) + matrices[:,dim_x:] @ v + term
-
-@njit(cache=True)
-def SS_jit(vals, l, k, v):
-    N, J, A, IN, cx, dim_x, dim_y = vals
-    N_k 		= nl.matrix_power(N.copy(),k)
-    JN			= J @ N_k @ nl.matrix_power(A.copy(),l)
-    temp3 		= subt(np.eye(dim_y), N_k)
-    c_JN 		= J @ IN @ temp3 @ cx
-    return -nl.inv(JN[:,:dim_x]) @ JN[:,dim_x:] @ v - nl.inv(JN[:,:dim_x]) @ c_JN 
 
 @njit(cache=True)
 def LL_pp(l, k, s, v, precalc_mat):
@@ -96,9 +79,34 @@ def LL_pp(l, k, s, v, precalc_mat):
 
 
 @njit(cache=True)
+def LL_jit(l, k, s, v, vals):
+    N, J, A, cx, dim_x, dim_y = vals
+    ## as in paper
+    if k == 0:
+        l = s
+    k0 		= max(s-l, 0)
+    l0 		= min(l, s)
+    N_k 		    = nl.matrix_power(N.copy(),k0)
+    matrices 		= N_k @ nl.matrix_power(A.copy(),l0)
+    term			= geom_series(N, k0) @ cx
+    return matrices[:,:dim_x] @ SS_jit(vals[:6], l, k, v) + matrices[:,dim_x:] @ v + term
+
+
+@njit(cache=True)
+def SS_jit(vals, l, k, v):
+    N, J, A, cx, dim_x, dim_y = vals
+    N_k 		= nl.matrix_power(N.copy(),k)
+    A_k         = nl.matrix_power(A.copy(),l)
+    JN			= J @ N_k @ A_k
+    term 		= J @ geom_series(N, k) @ cx
+    core        = -nl.inv(JN[:,:dim_x]) 
+    return core @ JN[:,dim_x:] @ v + core @ term 
+
+
+@njit(cache=True)
 def boehlgorithm_pp(vals, v, precalc_mat):
 
-    N, J, A, IN, cx, dim_x, dim_y, b, x_bar, D  = vals
+    N, J, A, cx, dim_x, dim_y, b, x_bar, D  = vals
 
     l, k 		= 0, 0
     l1, k1 		= 1, 1
@@ -135,7 +143,7 @@ def boehlgorithm_pp(vals, v, precalc_mat):
 @njit(cache=True)
 def boehlgorithm_jit(vals, v, k_max = 20):
 
-    N, J, A, IN, cx, dim_x, dim_y, b, x_bar, D  = vals
+    N, J, A, cx, dim_x, dim_y, b, x_bar, D  = vals
     
     l, k 		= 0, 0
     l1, k1 		= 1, 1
@@ -146,7 +154,7 @@ def boehlgorithm_jit(vals, v, k_max = 20):
         l1, k1 		= l, k
         if l: l -= 1
         if cnt < 10e4:
-            while b @ LL_jit(l, k, l, v, vals[:7]) - x_bar > 0:
+            while b @ LL_jit(l, k, l, v, vals[:6]) - x_bar > 0:
                 if l > k_max:
                     l = 0
                     break
@@ -156,13 +164,13 @@ def boehlgorithm_jit(vals, v, k_max = 20):
             l   = 0
         if (l) == (l1):
             if k: k 		-= 1
-            while b @ LL_jit(l, k, l+k, v, vals[:7]) - x_bar < 0: 
+            while b @ LL_jit(l, k, l+k, v, vals[:6]) - x_bar < 0: 
                 k +=1
                 if k > k_max:
                     print('k_max reached, exiting')
                     break
 
-    v_new 	= LL_jit(l, k, 1, v, vals[:7])[dim_x:]
+    v_new 	= LL_jit(l, k, 1, v, vals[:6])[dim_x:]
 
     return v_new, (l, k)
 
@@ -172,5 +180,5 @@ def boehlgorithm(model_obj, v):
     else:
         return boehlgorithm_jit(model_obj.sys, v)
 
-
+dsge.DSGE.DSGE.preprocess   = preprocess
 
