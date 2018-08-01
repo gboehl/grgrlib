@@ -32,10 +32,14 @@ def preprocess_jit(vals, ll_max, kk_max):
         for kk in range(kk_max):
             SS_mat[ll,kk], SS_term[ll,kk] 	= create_SS(vals[:6],ll,kk)
         for ss in range(ss_max):
-            if ss >= ll-1: LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:6],ll,0,ss)
+            LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:6],ll,0,ss)
+            ## hire is minimal potiental for speed up:
+            # if ss >= ll-1: LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:6],ll,0,ss)
 
     return SS_mat, SS_term, LL_mat, LL_term
 
+    k0 		= max(s-l, 0)
+    l0 		= min(l, s)
 
 def preprocess(self, ll_max = 5, kk_max = 30):
     self.precalc_mat    = preprocess_jit(self.sys, ll_max, kk_max)
@@ -59,7 +63,8 @@ def create_LL(vals, l, k, s):
     k0 		= max(s-l, 0)
     l0 		= min(l, s)
     N_k 		    = nl.matrix_power(N.copy(),k0)
-    matrices 		= N_k @ nl.matrix_power(A.copy(),l0)
+    A_k             = nl.matrix_power(A.copy(),l0)
+    matrices 		= N_k @ A_k
     term			= geom_series(N, k0) @ cx
     return matrices, term
 
@@ -88,7 +93,8 @@ def LL_jit(l, k, s, v, vals):
     k0 		= max(s-l, 0)
     l0 		= min(l, s)
     N_k 		    = nl.matrix_power(N.copy(),k0)
-    matrices 		= N_k @ nl.matrix_power(A.copy(),l0)
+    A_k             = nl.matrix_power(A.copy(),l0)
+    matrices 		= N_k @ A_k
     term			= geom_series(N, k0) @ cx
     return matrices[:,:dim_x] @ SS_jit(vals[:6], l, k, v) + matrices[:,dim_x:] @ v + term
 
