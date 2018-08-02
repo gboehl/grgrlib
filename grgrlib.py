@@ -182,50 +182,74 @@ def get_sys(self, par):
     self.sys 	= N, J, A, cx, dim_x, dim_v + dim_x, b2, x_bar, D2
 
 
-def irfs(self, shock, shocksize=1, wannasee = ['y', 'Pi', 'r']):
+def irfs(self, shocklist, wannasee = ['y', 'Pi', 'r'], plot = True):
     ## plots impule responses and returns the time series
 
-    ## should take tuples of (shock, size, timing)
-
-    shk_vec             = np.zeros(len(self.shocks))
-    shock_arg           = [v.name for v in self.shocks].index(shock)
-    shk_vec[shock_arg]  = shocksize
-
-    st_vec          = self.sys[-1] @ shk_vec
-    shk_process     = np.where(~fast0(st_vec))[0]
+    ## takes list of tuples of (shock, size, timing)
 
     labels      = [v.name.replace('_','') for v in self.vv[1]]
     args_see    = [labels.index(v) for v in wannasee]
 
-    care_for    = np.unique(np.hstack((args_see,shk_process)))
+    st_vec          = np.zeros(len(self.vv[1]))
 
-    X   = []
     Y   = []
+    K   = []
+    L   = []
     superflag   = False
+
     for t in range(30):
+
+        for vec in shocklist: 
+            if vec[2] == t:
+
+                shk_vec     = np.zeros(len(self.shocks))
+                shock       = vec[0]
+                shocksize   = vec[1]
+
+                shock_arg           = [v.name for v in self.shocks].index(shock)
+                shk_vec[shock_arg]  = shocksize
+
+                st_vec += self.sys[-1] @ shk_vec
+
+                shk_process     = (self.sys[-1] @ shk_vec).nonzero()
+
+                args_see += shk_process
+
         st_vec, (k,l), flag     = boehlgorithm(self, st_vec)
         if flag: 
             superflag   = True
-        X.append(st_vec[care_for])
         Y.append(st_vec)
-    X   = np.array(X)
+        K.append(k)
+        L.append(l)
+
     Y   = np.array(Y)
+    K   = np.array(K)
+    L   = np.array(L)
+
+    care_for    = np.unique(args_see)
+
+    X   = Y[:,care_for]
 
     if superflag:
         warnings.warn('Numerical errors in boehlgorithm. Check for existence conditions')
 
-    fig, ax     = plt.subplots()
-    for i, l in enumerate(care_for):
-        plt.plot(X[:,i], lw=3, label=labels[l])
-    ax.tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.locator_params(nbins=8,axis='x')
-    ax.legend(frameon=0)
-    plt.tight_layout()
-    plt.show()
+    if plot:
+        fig, ax     = plt.subplots()
+        for i, l in enumerate(care_for):
+            plt.plot(X[:,i], lw=3, label=labels[l])
+        ax.tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.locator_params(nbins=8,axis='x')
+        ax.legend(frameon=0)
+        plt.tight_layout()
+        plt.show()
 
-    self.ts     = Y
+    self.ts_Y     = Y
+    self.ts_X     = X
+    self.ts_K     = K
+    self.ts_L     = L
+    self.ts_labels     = self.vv[1][care_for]
 
 
 @njit(cache=True)
