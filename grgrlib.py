@@ -179,13 +179,14 @@ def get_sys(self, par):
     ## add everything to the DSGE object
     self.vv     = vv_x3, vv_v
     self.par    = par
-    self.sys 	= N, J, A, cx, dim_x, dim_v + dim_x, b2, x_bar, D2
+    self.sys 	= N, A, J, cx, b2, x_bar, D2
 
 
 def irfs(self, shocklist, wannasee = ['y', 'Pi', 'r'], plot = True):
-    ## plots impule responses and returns the time series
 
-    ## takes list of tuples of (shock, size, timing)
+    ## plots impule responses and returns the time series
+    ## shocklist: takes list of tuples of (shock, size, timing) 
+    ## wannasee: list of strings of the variables to be plotted and stored
 
     labels      = [v.name.replace('_','') for v in self.vv[1]]
     args_see    = [labels.index(v) for v in wannasee]

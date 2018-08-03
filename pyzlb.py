@@ -18,9 +18,10 @@ from numba import njit
 @njit(cache=True)
 def preprocess_jit(vals, ll_max, kk_max):
 
-    N, J, A, cx, dim_x, dim_y, b, x_bar, D  = vals
+    N, A, J, cx, b, x_bar, D  = vals
 
-    dim_v   = dim_y - dim_x
+    dim_x, dim_y    = J.shape
+    dim_v           = dim_y - dim_x
 
     ss_max 	= ll_max + kk_max
     LL_mat 	= np.empty((ll_max,ss_max, dim_y,dim_y))
@@ -30,9 +31,9 @@ def preprocess_jit(vals, ll_max, kk_max):
 
     for ll in range(ll_max):
         for kk in range(kk_max):
-            SS_mat[ll,kk], SS_term[ll,kk] 	= create_SS(vals[:6],ll,kk)
+            SS_mat[ll,kk], SS_term[ll,kk] 	= create_SS(vals[:4],ll,kk)
         for ss in range(ss_max):
-            LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:6],ll,0,ss)
+            LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:4],ll,0,ss)
             ## hire is minimal potiental for speed up:
             # if ss >= ll-1: LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:6],ll,0,ss)
 
@@ -47,7 +48,9 @@ def preprocess(self, ll_max = 5, kk_max = 30):
 
 @njit(cache=True)
 def create_SS(vals, l, k):
-    N, J, A, cx, dim_x, dim_y = vals
+    N, A, J, cx,    = vals
+    dim_x, dim_y    = J.shape
+
     N_k 		= nl.matrix_power(N.copy(),k)
     A_k         = nl.matrix_power(A.copy(),l)
     JN			= J @ N_k @ A_k
@@ -58,8 +61,8 @@ def create_SS(vals, l, k):
 
 @njit(cache=True)
 def create_LL(vals, l, k, s):
-    N, J, A, cx, dim_x, dim_y = vals
-    ## as in paper
+    N, A, J, cx,    = vals
+    dim_x, dim_y    = J.shape
     k0 		= max(s-l, 0)
     l0 		= min(l, s)
     N_k 		    = nl.matrix_power(N.copy(),k0)
@@ -86,8 +89,9 @@ def LL_pp(l, k, s, v, precalc_mat):
 
 @njit(cache=True)
 def LL_jit(l, k, s, v, vals):
-    N, J, A, cx, dim_x, dim_y = vals
-    ## as in paper
+
+    N, A, J, cx,    = vals
+    dim_x, dim_y    = J.shape
     if k == 0:
         l = s
     k0 		= max(s-l, 0)
@@ -96,12 +100,15 @@ def LL_jit(l, k, s, v, vals):
     A_k             = nl.matrix_power(A.copy(),l0)
     matrices 		= N_k @ A_k
     term			= geom_series(N, k0) @ cx
-    return matrices[:,:dim_x] @ SS_jit(vals[:6], l, k, v) + matrices[:,dim_x:] @ v + term
+    return matrices[:,:dim_x] @ SS_jit(vals, l, k, v) + matrices[:,dim_x:] @ v + term
 
 
 @njit(cache=True)
 def SS_jit(vals, l, k, v):
-    N, J, A, cx, dim_x, dim_y = vals
+
+    N, A, J, cx,    = vals
+    dim_x, dim_y    = J.shape
+
     N_k 		= nl.matrix_power(N.copy(),k)
     A_k         = nl.matrix_power(A.copy(),l)
     JN			= J @ N_k @ A_k
@@ -113,7 +120,8 @@ def SS_jit(vals, l, k, v):
 @njit(cache=True)
 def boehlgorithm_pp(vals, v, precalc_mat, max_cnt):
 
-    N, J, A, cx, dim_x, dim_y, b, x_bar, D  = vals
+    N, A, J, cx, b, x_bar, D  = vals
+    dim_x, dim_y    = J.shape
 
     l, k 		= 0, 0
     l1, k1 		= 1, 1
@@ -147,10 +155,12 @@ def boehlgorithm_pp(vals, v, precalc_mat, max_cnt):
 
     return v_new, (l, k), flag
 
+
 @njit(cache=True)
 def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
 
-    N, J, A, cx, dim_x, dim_y, b, x_bar, D  = vals
+    N, A, J, cx, b, x_bar, D  = vals
+    dim_x, dim_y    = J.shape
     
     l, k 		= 0, 0
     l1, k1 		= 1, 1
@@ -164,22 +174,23 @@ def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
             break
         l1, k1 		= l, k
         if l: l -= 1
-        while b @ LL_jit(l, k, l, v, vals[:6]) - x_bar > 0:
+        while b @ LL_jit(l, k, l, v, vals[:4]) - x_bar > 0:
             if l > l_max:
                 l       = 0
                 break
             l 	+= 1
         if (l) == (l1):
             if k: k 		-= 1
-            while b @ LL_jit(l, k, l+k, v, vals[:6]) - x_bar < 0: 
+            while b @ LL_jit(l, k, l+k, v, vals[:4]) - x_bar < 0: 
                 k +=1
                 if k > k_max:
                     print('k_max reached, exiting')
                     break
 
-    v_new 	= LL_jit(l, k, 1, v, vals[:6])[dim_x:]
+    v_new 	= LL_jit(l, k, 1, v, vals[:4])[dim_x:]
 
     return v_new, (l, k), flag
+
 
 def boehlgorithm(model_obj, v, max_cnt = 5e1):
     if hasattr(model_obj, 'precalc_mat'):
