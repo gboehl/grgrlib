@@ -227,7 +227,7 @@ def irfs(self, shocklist, wannasee = ['y', 'Pi', 'r'], plot = True):
 
                 args_see += shk_process
 
-        st_vec, (k,l), flag     = boehlgorithm(self, st_vec)
+        st_vec, (l,k), flag     = boehlgorithm(self, st_vec)
         if flag: 
             superflag   = True
         Y.append(st_vec)
