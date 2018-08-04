@@ -177,15 +177,27 @@ def get_sys(self, par, info = False):
     cx 		    = nl.inv(P2) @ c1*x_bar
 
     ## check condition:
-    N1  = N[:dim_x,:dim_x]
-    N3  = N[dim_x:,:dim_x]
+    n1  = N[:dim_x,:dim_x]
+    n3  = N[dim_x:,:dim_x]
     cc1  = cx[:dim_x]
     cc2  = cx[dim_x:]
     bb1  = b2[:dim_x]
 
     if info:
         print('Creation of system matrices finished. Condition value is %s.' 
-              % (bb1 @ nl.inv(N1 - OME @ N3) @ (cc1 - OME @ cc2)).round(4))
+              % (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4))
+
+    ## for later, yields further speedup since system matrices are smaller:
+    # f0              = ~(fast0(N, 0) & fast0(A, 0) & fast0(b) & fast0(cx))
+    # dim_x, dim_y    = J.shape
+    # N1  = N[f0][:,f0]
+    # A1  = A[f0][:,f0]
+    # J1  = J[:,f0]
+    # cx1 = cx[f0]
+    # b3  = b2[f0]
+    # D3  = D2[f0[dim_x:]]
+
+    # self.sys 	= N1, A1, J1, cx1, b3, x_bar, D3
 
     ## add everything to the DSGE object
     self.vv     = vv_x3, vv_v
