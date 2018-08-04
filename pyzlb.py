@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 directory = '/home/gboehl/repos/'
-import os, sys, importlib
+import os, sys, importlib, time
 for i in os.listdir(directory):
     sys.path.append(directory+i)
 sys.path.append('/home/gboehl/rsh/bs18/code/')
@@ -34,16 +34,17 @@ def preprocess_jit(vals, ll_max, kk_max):
             SS_mat[ll,kk], SS_term[ll,kk] 	= create_SS(vals[:4],ll,kk)
         for ss in range(ss_max):
             LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:4],ll,0,ss)
-            ## hire is minimal potiental for speed up:
+            ## here is minimal potiental for speed up:
             # if ss >= ll-1: LL_mat[ll,ss], LL_term[ll,ss] 	= create_LL(vals[:6],ll,0,ss)
 
     return SS_mat, SS_term, LL_mat, LL_term
 
-    k0 		= max(s-l, 0)
-    l0 		= min(l, s)
 
-def preprocess(self, ll_max = 5, kk_max = 30):
+def preprocess(self, ll_max = 5, kk_max = 30, info = False):
+    st  = time.time()
     self.precalc_mat    = preprocess_jit(self.sys, ll_max, kk_max)
+    if info: 
+        print('Preproceccing finished within %s ms.' % np.round((time.time() - st)/1000, 4))
 
 
 @njit(cache=True)

@@ -93,7 +93,7 @@ def fast0(A, mode=None):
     else:
         return np.allclose(A, 0)
 
-def get_sys(self, par):
+def get_sys(self, par, info = False):
 
     if not self.const_var:
         warnings.warn('Code is only meant to work with OBCs')
@@ -176,6 +176,17 @@ def get_sys(self, par):
     J 			= np.hstack((np.eye(dim_x), -OME))
     cx 		    = nl.inv(P2) @ c1*x_bar
 
+    ## check condition:
+    N1  = N[:dim_x,:dim_x]
+    N3  = N[dim_x:,:dim_x]
+    cc1  = cx[:dim_x]
+    cc2  = cx[dim_x:]
+    bb1  = b2[:dim_x]
+
+    if info:
+        print('Creation of system matrices finished. Condition value is %s.' 
+              % (bb1 @ nl.inv(N1 - OME @ N3) @ (cc1 - OME @ cc2)).round(4))
+
     ## add everything to the DSGE object
     self.vv     = vv_x3, vv_v
     self.par    = par
@@ -232,7 +243,7 @@ def irfs(self, shocklist, wannasee = ['y', 'Pi', 'r'], plot = True):
     X   = Y[:,care_for]
 
     if superflag:
-        warnings.warn('Numerical errors in boehlgorithm. Check for existence conditions')
+        warnings.warn('Numerical errors in boehlgorithm, did not converge')
 
     if plot:
         fig, ax     = plt.subplots()
