@@ -199,5 +199,5 @@ def boehlgorithm(model_obj, v, max_cnt = 5e1):
     else:
         return boehlgorithm_jit(model_obj.sys, v, max_cnt)
 
-dsge.DSGE.DSGE.preprocess   = preprocess
+pydsge.DSGE.DSGE.preprocess   = preprocess
 

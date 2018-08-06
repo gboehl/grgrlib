@@ -12,7 +12,7 @@ import numpy.linalg as nl
 import scipy.linalg as sl
 import warnings
 from pyzlb import *
-import dsge
+import pydsge
 import matplotlib.pyplot as plt
 from numba import njit
 
@@ -290,5 +290,5 @@ def gs_add(A, B):
 			A[i][j] += B[i][j]
 
 
-dsge.DSGE.DSGE.get_sys  = get_sys
-dsge.DSGE.DSGE.irfs     = irfs
+pydsge.DSGE.DSGE.get_sys  = get_sys
+pydsge.DSGE.DSGE.irfs     = irfs
