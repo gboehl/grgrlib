@@ -1,2 +1,4 @@
 # grgrlib
-Library of standard functions serving several processes. Vastly undocumented but straigtforward. Partially contains the functions for solving DSGE models @T ZLB.
+Library of standard functions serving several processes. Yet undocumented but straigtforward. Contains the functions for solving DSGE models @ZLB.
+
+For now only the solution method is implemented.
