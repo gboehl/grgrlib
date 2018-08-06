@@ -11,8 +11,8 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import warnings
-import dsge
-from grgrlib import *
+import pydsge
+from grgrlib.base import *
 from numba import njit
 
 @njit(cache=True)

@@ -11,7 +11,7 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import warnings
-from pyzlb import *
+from grgrlib.pyzlb import *
 import pydsge
 import matplotlib.pyplot as plt
 from numba import njit
