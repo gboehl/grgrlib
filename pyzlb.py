@@ -81,8 +81,7 @@ def LL_pp(l, k, s, v, precalc_mat):
     dim_x   = SS_mat.shape[2]
 
     SS 	= SS_mat[l,k] @ v + SS_term[l,k]
-    if not k:
-        l = s
+
     matrices 	= LL_mat[l,s]
     term 		= LL_term[l,s]
     return matrices[:,:dim_x] @ SS + matrices[:,dim_x:] @ v + term
@@ -93,8 +92,7 @@ def LL_jit(l, k, s, v, vals):
 
     N, A, J, cx,    = vals
     dim_x, dim_y    = J.shape
-    if k == 0:
-        l = s
+
     k0 		= max(s-l, 0)
     l0 		= min(l, s)
     N_k 		    = nl.matrix_power(N.copy(),k0)
@@ -152,6 +150,7 @@ def boehlgorithm_pp(vals, v, precalc_mat, max_cnt):
                     break
         cnt += 1
 
+    if not k: l = 1
     v_new 	= LL_pp(l, k, 1, v, precalc_mat)[dim_x:]
 
     return v_new, (l, k), flag
@@ -188,16 +187,17 @@ def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
                     print('k_max reached, exiting')
                     break
 
+    if not k: l = 1
     v_new 	= LL_jit(l, k, 1, v, vals[:4])[dim_x:]
 
     return v_new, (l, k), flag
 
 
-def boehlgorithm(model_obj, v, max_cnt = 5e1):
+def boehlgorithm(model_obj, v, max_cnt = 1e2):
+# def boehlgorithm(model_obj, v, max_cnt = 5e1):
     if hasattr(model_obj, 'precalc_mat'):
         return boehlgorithm_pp(model_obj.sys, v, model_obj.precalc_mat, max_cnt)
     else:
         return boehlgorithm_jit(model_obj.sys, v, max_cnt)
 
 dsge.DSGE.DSGE.preprocess   = preprocess
-
