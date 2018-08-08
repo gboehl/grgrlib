@@ -5,7 +5,6 @@ directory = '/home/gboehl/repos/'
 import os, sys, importlib, time
 for i in os.listdir(directory):
     sys.path.append(directory+i)
-sys.path.append('/home/gboehl/rsh/bs18/code/')
 
 import numpy as np
 import numpy.linalg as nl
@@ -14,6 +13,19 @@ import warnings
 import pydsge
 from grgrlib.base import *
 from numba import njit
+
+@njit(cache=True)
+def geom_series(M, n):
+    res  = np.zeros(M.shape)
+    for i in range(n):
+        gs_add(res,nl.matrix_power(M,i))
+    return res
+
+@njit(cache=True)
+def gs_add(A, B):
+	for i in range(len(A)):
+		for j in range(len(A)):
+			A[i][j] += B[i][j]
 
 @njit(cache=True)
 def preprocess_jit(vals, ll_max, kk_max):
@@ -201,3 +213,9 @@ def boehlgorithm(model_obj, v, max_cnt = 1e2):
         return boehlgorithm_jit(model_obj.sys, v, max_cnt)
 
 pydsge.DSGE.DSGE.preprocess   = preprocess
+
+# aa = np.arange(4).reshape(2,2)
+# aa = aa * 1.
+# from grgrlib.base import *
+# geom_series(aa,2)
+

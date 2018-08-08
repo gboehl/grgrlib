@@ -275,20 +275,5 @@ def irfs(self, shocklist, wannasee = ['y', 'Pi', 'r'], plot = True):
     self.ts_L     = L
     self.ts_labels     = self.vv[1][care_for]
 
-
-@njit(cache=True)
-def geom_series(M, n):
-    res  = np.zeros(M.shape)
-    for i in range(n):
-        gs_add(res,nl.matrix_power(M,i))
-    return res
-
-@njit(cache=True)
-def gs_add(A, B):
-	for i in range(len(A)):
-		for j in range(len(A)):
-			A[i][j] += B[i][j]
-
-
 pydsge.DSGE.DSGE.get_sys  = get_sys
 pydsge.DSGE.DSGE.irfs     = irfs
