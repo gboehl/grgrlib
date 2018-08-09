@@ -66,12 +66,20 @@ def re_bc(N, d_endo):
     return -res.real
     """
 
+def iuc(x, y):
+    out = np.empty_like(x, dtype=bool)
+    nonzero = (y != 0)
+    # handles (x, y) = (0, 0) too
+    out[~nonzero] = False
+    ## rounding is necessary to avoid false round-offs
+    out[nonzero] = (abs(x[nonzero]/y[nonzero]).round(3) < 1.0)
+    return out
 
 def re_bc(N, d_endo):
 
     n   = N.shape[0]
 
-    MM, PP, alp, bet, Q, Z    = sl.ordqz(N,np.eye(n),sort='iuc')
+    MM, PP, alp, bet, Q, Z    = sl.ordqz(N,np.eye(n),sort=iuc)
 
     if not fast0(Q @ MM @ Z.T - N, 2):
         warnings.warn('Numerical errors in QZ')
@@ -174,7 +182,6 @@ def get_sys(self, par, info = False):
 
     dim_x       = len(vv_x3)
     OME         = re_bc(A, dim_x)
-    print(OME)
     J 			= np.hstack((np.eye(dim_x), -OME))
     cx 		    = nl.inv(P2) @ c1*x_bar
 
@@ -242,6 +249,9 @@ def irfs(self, shocklist, wannasee = ['y', 'Pi', 'r'], plot = True):
                 args_see += shk_process
 
         st_vec, (l,k), flag     = boehlgorithm(self, st_vec)
+        # st_vec  = LL_jit(0, 0, 1, st_vec, self.sys[:4])[len(self.vv[0]):]
+        # flag    = 0
+        # k, l    = 0,0
         if flag: 
             superflag   = True
         Y.append(st_vec)
