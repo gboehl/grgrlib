@@ -249,11 +249,10 @@ def irfs(self, shocklist, wannasee = ['y', 'Pi', 'r'], plot = True):
                 args_see += shk_process
 
         st_vec, (l,k), flag     = boehlgorithm(self, st_vec)
-        # st_vec  = LL_jit(0, 0, 1, st_vec, self.sys[:4])[len(self.vv[0]):]
-        # flag    = 0
-        # k, l    = 0,0
+
         if flag: 
             superflag   = True
+
         Y.append(st_vec)
         K.append(k)
         L.append(l)

@@ -212,9 +212,3 @@ def boehlgorithm(model_obj, v, max_cnt = 5e1):
         return boehlgorithm_jit(model_obj.sys, v, max_cnt)
 
 pydsge.DSGE.DSGE.preprocess   = preprocess
-
-# aa = np.arange(4).reshape(2,2)
-# aa = aa * 1.
-# from grgrlib.base import *
-# geom_series(aa,2)
-
