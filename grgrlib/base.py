@@ -112,7 +112,8 @@ def get_sys(self, par, info = False):
 
     ## define transition shocks -> state
     D   = self.PSI(par)
-    D2  = BB.T @ D
+    hit     = ~fast0(D, 1)
+    D2  = BB[hit].T @ D[hit]
 
     ## mask those vars that are either forward looking or part of the constraint
     in_x       = ~fast0(AA, 0) | ~fast0(b[:dim_v])
@@ -173,6 +174,7 @@ def get_sys(self, par, info = False):
 
     dim_x       = len(vv_x3)
     OME         = re_bc(A, dim_x)
+    print(OME)
     J 			= np.hstack((np.eye(dim_x), -OME))
     cx 		    = nl.inv(P2) @ c1*x_bar
 
