@@ -56,7 +56,7 @@ def preprocess(self, ll_max = 5, kk_max = 30, info = False):
     st  = time.time()
     self.precalc_mat    = preprocess_jit(self.sys, ll_max, kk_max)
     if info: 
-        print('Preproceccing finished within %s ms.' % np.round((time.time() - st)/1000, 4))
+        print('Preproceccing finished within %s s.' % np.round((time.time() - st), 3))
 
 
 @njit(cache=True)
@@ -64,8 +64,8 @@ def create_SS(vals, l, k):
     N, A, J, cx,    = vals
     dim_x, dim_y    = J.shape
 
-    N_k 		= nl.matrix_power(N.copy(),k)
-    A_k         = nl.matrix_power(A.copy(),l)
+    N_k 		= nl.matrix_power(N,k)
+    A_k         = nl.matrix_power(A,l)
     JN			= J @ N_k @ A_k
     term 		= J @ geom_series(N, k) @ cx
     core        = -nl.inv(JN[:,:dim_x]) 
@@ -78,8 +78,8 @@ def create_LL(vals, l, k, s):
     dim_x, dim_y    = J.shape
     k0 		= max(s-l, 0)
     l0 		= min(l, s)
-    N_k 		    = nl.matrix_power(N.copy(),k0)
-    A_k             = nl.matrix_power(A.copy(),l0)
+    N_k 		    = nl.matrix_power(N,k0)
+    A_k             = nl.matrix_power(A,l0)
     matrices 		= N_k @ A_k
     term			= geom_series(N, k0) @ cx
     return matrices, term
@@ -107,12 +107,25 @@ def LL_jit(l, k, s, v, vals):
 
     k0 		= max(s-l, 0)
     l0 		= min(l, s)
-    N_k 		    = nl.matrix_power(N.copy(),k0)
-    A_k             = nl.matrix_power(A.copy(),l0)
+    N_k 		    = nl.matrix_power(N,k0)
+    A_k             = nl.matrix_power(A,l0)
     matrices 		= N_k @ A_k
     term			= geom_series(N, k0) @ cx
     return matrices[:,:dim_x] @ SS_jit(vals, l, k, v) + matrices[:,dim_x:] @ v + term
 
+@njit(cache=True)
+def LL_special(l, k, s, v, vals, vals_old, f0):
+
+    N, A, J, cx,    = vals
+    dim_x, dim_y    = J.shape
+
+    k0 		= max(s-l, 0)
+    l0 		= min(l, s)
+    N_k 		    = nl.matrix_power(N,k0)
+    A_k             = nl.matrix_power(A,l0)
+    matrices 		= N_k @ A_k
+    term			= geom_series(N, k0) @ cx
+    return matrices[:,:dim_x] @ SS_jit(vals_old, l, k, v) + matrices[:,f0][:,dim_x:] @ v + term
 
 @njit(cache=True)
 def SS_jit(vals, l, k, v):
@@ -120,8 +133,8 @@ def SS_jit(vals, l, k, v):
     N, A, J, cx,    = vals
     dim_x, dim_y    = J.shape
 
-    N_k 		= nl.matrix_power(N.copy(),k)
-    A_k         = nl.matrix_power(A.copy(),l)
+    N_k 		= nl.matrix_power(N,k)
+    A_k         = nl.matrix_power(A,l)
     JN			= J @ N_k @ A_k
     term 		= J @ geom_series(N, k) @ cx
     core        = -nl.inv(JN[:,:dim_x]) 
@@ -206,6 +219,7 @@ def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
 
 
 def boehlgorithm(model_obj, v, max_cnt = 5e1):
+
     if hasattr(model_obj, 'precalc_mat'):
         return boehlgorithm_pp(model_obj.sys, v, model_obj.precalc_mat, max_cnt)
     else:

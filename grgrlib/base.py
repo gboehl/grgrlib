@@ -196,32 +196,24 @@ def get_sys(self, par, info = False):
         print('Creation of system matrices finished. Condition value is %s.' 
               % (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4))
 
-    ## for later, yields further speedup since system matrices are smaller:
-    # f0              = ~(fast0(N, 0) & fast0(A, 0) & fast0(b) & fast0(cx))
-    # dim_x, dim_y    = J.shape
-    # N1  = N[f0][:,f0]
-    # A1  = A[f0][:,f0]
-    # J1  = J[:,f0]
-    # cx1 = cx[f0]
-    # b3  = b2[f0]
-    # D3  = D2[f0[dim_x:]]
-
-    # self.sys 	= N1, A1, J1, cx1, b3, x_bar, D3
-
     ## add everything to the DSGE object
     self.vv     = vv_x3, vv_v
+    self.obs_arg    = [ list(self.vv[1]).index(ob) for ob in self['observables'] ]
     self.par    = par
     self.sys 	= N, A, J, cx, b2, x_bar, D2
 
 
-def irfs(self, shocklist, wannasee = ['y', 'Pi', 'r'], plot = True):
+def irfs(self, shocklist, wannasee = None, plot = True):
 
     ## plots impule responses and returns the time series
     ## shocklist: takes list of tuples of (shock, size, timing) 
     ## wannasee: list of strings of the variables to be plotted and stored
 
     labels      = [v.name.replace('_','') for v in self.vv[1]]
-    args_see    = [labels.index(v) for v in wannasee]
+    if wannasee is not None:
+        args_see    = [labels.index(v) for v in wannasee]
+    else:
+        args_see    = self.obs_arg.copy()
 
     st_vec          = np.zeros(len(self.vv[1]))
 
@@ -286,5 +278,15 @@ def irfs(self, shocklist, wannasee = ['y', 'Pi', 'r'], plot = True):
     self.ts_L     = L
     self.ts_labels     = self.vv[1][care_for]
 
+
+def t_func(self, state, noise = 0, return_k = False):
+
+	newstate, (l,k), flag   = boehlgorithm(self, state)
+	newstate 	            += self.sys[-1] @ noise
+
+	if return_k: 	return newstate, (l,k), flag
+	else: 			return newstate
+
 pydsge.DSGE.DSGE.get_sys  = get_sys
+pydsge.DSGE.DSGE.t_func  = t_func
 pydsge.DSGE.DSGE.irfs     = irfs
