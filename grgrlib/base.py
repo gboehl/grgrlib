@@ -197,8 +197,9 @@ def get_sys(self, par, info = False):
               % (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4))
 
     ## add everything to the DSGE object
-    self.vv     = vv_x3, vv_v
-    self.obs_arg    = [ list(self.vv[1]).index(ob) for ob in self['observables'] ]
+    # self.vv     = vv_x3, vv_v
+    self.vv     = vv_v
+    self.obs_arg    = [ list(vv_v).index(ob) for ob in self['observables'] ]
     self.par    = par
     self.sys 	= N, A, J, cx, b2, x_bar, D2
 
@@ -209,13 +210,13 @@ def irfs(self, shocklist, wannasee = None, plot = True):
     ## shocklist: takes list of tuples of (shock, size, timing) 
     ## wannasee: list of strings of the variables to be plotted and stored
 
-    labels      = [v.name.replace('_','') for v in self.vv[1]]
+    labels      = [v.name.replace('_','') for v in self.vv]
     if wannasee is not None:
         args_see    = [labels.index(v) for v in wannasee]
     else:
         args_see    = self.obs_arg.copy()
 
-    st_vec          = np.zeros(len(self.vv[1]))
+    st_vec          = np.zeros(len(self.vv))
 
     Y   = []
     K   = []
@@ -261,31 +262,38 @@ def irfs(self, shocklist, wannasee = None, plot = True):
         warnings.warn('Numerical errors in boehlgorithm, did not converge')
 
     if plot:
-        fig, ax     = plt.subplots()
-        for i, l in enumerate(care_for):
-            plt.plot(X[:,i], lw=3, label=labels[l])
-        ax.tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.locator_params(nbins=8,axis='x')
-        ax.legend(frameon=0)
-        plt.tight_layout()
-        plt.show()
+        plt_no      = X.shape[1] // 4 + bool(X.shape[1]%4)
+
+        for i in range(plt_no):
+            ax  = plt.subplots(2,2)[1].flatten()
+            for j in range(4):
+                if 4*i+j >= len(care_for):
+                    ax[j].set_visible(False)
+                else:
+                    l   = care_for[4*i+j]
+                    ax[j].plot(X[:,4*i+j], lw=3)
+                    ax[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
+                    ax[j].spines['top'].set_visible(False)
+                    ax[j].spines['right'].set_visible(False)
+                    ax[j].set_xlabel(labels[l], fontsize=13)
+            plt.tight_layout()
+            plt.show()
 
     self.ts_Y     = Y
     self.ts_X     = X
     self.ts_K     = K
     self.ts_L     = L
-    self.ts_labels     = self.vv[1][care_for]
+    self.ts_labels     = self.vv[care_for]
 
 
-def t_func(self, state, noise = 0, return_k = False):
+def t_func(self, state, noise = None, return_k = False):
 
-	newstate, (l,k), flag   = boehlgorithm(self, state)
-	newstate 	            += self.sys[-1] @ noise
+    newstate, (l,k), flag   = boehlgorithm(self, state)
+    if noise is not None:
+        newstate 	            += self.sys[-1] @ noise
 
-	if return_k: 	return newstate, (l,k), flag
-	else: 			return newstate
+    if return_k: 	return newstate, (l,k), flag
+    else: 			return newstate
 
 pydsge.DSGE.DSGE.get_sys  = get_sys
 pydsge.DSGE.DSGE.t_func  = t_func
