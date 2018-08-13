@@ -15,6 +15,8 @@ from grgrlib.pyzlb import *
 import pydsge
 import matplotlib.pyplot as plt
 from numba import njit
+from filterpy.kalman import ReducedScaledSigmaPoints
+from filterpy.kalman import UnscentedKalmanFilter as UKF
 
 def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
@@ -295,6 +297,45 @@ def t_func(self, state, noise = None, return_k = False):
     if return_k: 	return newstate, (l,k), flag
     else: 			return newstate
 
-pydsge.DSGE.DSGE.get_sys  = get_sys
-pydsge.DSGE.DSGE.t_func  = t_func
-pydsge.DSGE.DSGE.irfs     = irfs
+
+def create_filter(self, par, alpha = .25, obs_var = .2):
+
+    dim_v       = len(self.vv)
+    beta_ukf 	= 2.
+    kappa_ukf 	= 3 - self.ny
+
+    if not hasattr(self, 'Z'):
+        warnings.warn('No time series of observables provided')
+    else:
+        sig_obs 	= np.std(self.Z,0)*obs_var
+
+    exo_args    = ~fast0(self.sys[-1],1)
+
+    spoints     = ReducedScaledSigmaPoints(alpha, beta_ukf, kappa_ukf, exo_args)
+    ukf 		= UKF(dim_x=dim_v, dim_z=self.ny, hx=self.obs_arg, fx=self.t_func, points=spoints)
+    ukf.x 		= np.zeros(dim_v)
+    ukf.R 		= np.diag(sig_obs)**2
+    CO          = self.sys[-1] @ self.QQ(par)
+    ukf.Q 		= CO @ CO.T
+
+    self.ukf    = ukf
+
+
+def run_filter(self):
+
+    exo_args    = ~fast0(self.sys[-1],1)
+
+    X1, cov, yy, ll     = self.ukf.batch_filter(self.Z)
+
+    self.filtered_Z     = X1[:,self.obs_arg]
+    self.filtered_X     = X1
+    self.filtered_V     = X1[:,exo_args]
+    self.ll             = ll
+    self.residuals      = yy
+
+
+pydsge.DSGE.DSGE.get_sys            = get_sys
+pydsge.DSGE.DSGE.t_func             = t_func
+pydsge.DSGE.DSGE.irfs               = irfs
+pydsge.DSGE.DSGE.create_filter      = create_filter
+pydsge.DSGE.DSGE.run_filter         = run_filter
