@@ -100,9 +100,9 @@ def LL_pp(l, k, s, v, precalc_mat):
 
 
 @njit(cache=True)
-def LL_jit(l, k, s, v, vals):
+def LL_jit(l, k, s, v, eps, vals):
 
-    N, A, J, cx,    = vals
+    N, A, J, H, cx  = vals
     dim_x, dim_y    = J.shape
 
     k0 		= max(s-l, 0)
@@ -111,26 +111,13 @@ def LL_jit(l, k, s, v, vals):
     A_k             = nl.matrix_power(A,l0)
     matrices 		= N_k @ A_k
     term			= geom_series(N, k0) @ cx
-    return matrices[:,:dim_x] @ SS_jit(vals, l, k, v) + matrices[:,dim_x:] @ v + term
+    return matrices[:,:dim_x] @ SS_jit(vals, l, k, v, eps) + matrices[:,dim_x:] @ v + term - H @ eps
+
 
 @njit(cache=True)
-def LL_special(l, k, s, v, vals, vals_old, f0):
+def SS_jit(vals, l, k, v, eps):
 
-    N, A, J, cx,    = vals
-    dim_x, dim_y    = J.shape
-
-    k0 		= max(s-l, 0)
-    l0 		= min(l, s)
-    N_k 		    = nl.matrix_power(N,k0)
-    A_k             = nl.matrix_power(A,l0)
-    matrices 		= N_k @ A_k
-    term			= geom_series(N, k0) @ cx
-    return matrices[:,:dim_x] @ SS_jit(vals_old, l, k, v) + matrices[:,f0][:,dim_x:] @ v + term
-
-@njit(cache=True)
-def SS_jit(vals, l, k, v):
-
-    N, A, J, cx,    = vals
+    N, A, J, H, cx  = vals
     dim_x, dim_y    = J.shape
 
     N_k 		= nl.matrix_power(N,k)
@@ -138,13 +125,13 @@ def SS_jit(vals, l, k, v):
     JN			= J @ N_k @ A_k
     term 		= J @ geom_series(N, k) @ cx
     core        = -nl.inv(JN[:,:dim_x]) 
-    return core @ JN[:,dim_x:] @ v + core @ term 
+    return core @ JN[:,dim_x:] @ v + core @ term - J @ H @ eps
 
 
 @njit(cache=True)
 def boehlgorithm_pp(vals, v, precalc_mat, max_cnt):
 
-    N, A, J, cx, b, x_bar, D  = vals
+    N, A, J, cx, b, x_bar   = vals
     dim_x, dim_y    = J.shape
 
     l, k 		= 0, 0
@@ -182,9 +169,9 @@ def boehlgorithm_pp(vals, v, precalc_mat, max_cnt):
 
 
 @njit(cache=True)
-def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
+def boehlgorithm_jit(vals, v, eps, max_cnt, k_max = 20, l_max = 20):
 
-    N, A, J, cx, b, x_bar, D  = vals
+    N, A, J, H, cx, b, x_bar    = vals
     dim_x, dim_y    = J.shape
     
     l, k 		= 0, 0
@@ -199,30 +186,30 @@ def boehlgorithm_jit(vals, v, max_cnt, k_max = 20, l_max = 20):
             break
         l1, k1 		= l, k
         if l: l -= 1
-        while b @ LL_jit(l, k, l, v, vals[:4]) - x_bar > 0:
+        while b @ LL_jit(l, k, l, v, eps, vals[:5]) - x_bar > 0:
             if l > l_max:
                 l       = 0
                 break
             l 	+= 1
         if (l) == (l1):
             if k: k 		-= 1
-            while b @ LL_jit(l, k, l+k, v, vals[:4]) - x_bar < 0: 
+            while b @ LL_jit(l, k, l+k, v, eps, vals[:5]) - x_bar < 0: 
                 k +=1
                 if k > k_max:
                     print('k_max reached, exiting')
                     break
 
     if not k: l = 1
-    v_new 	= LL_jit(l, k, 1, v, vals[:4])[dim_x:]
+    v_new 	= LL_jit(l, k, 1, v, eps, vals[:5])[dim_x:]
 
     return v_new, (l, k), flag
 
 
-def boehlgorithm(model_obj, v, max_cnt = 5e1):
+def boehlgorithm(model_obj, v, eps, max_cnt = 5e1):
 
     if hasattr(model_obj, 'precalc_mat'):
         return boehlgorithm_pp(model_obj.sys, v, model_obj.precalc_mat, max_cnt)
     else:
-        return boehlgorithm_jit(model_obj.sys, v, max_cnt)
+        return boehlgorithm_jit(model_obj.sys, v, eps, max_cnt)
 
 pydsge.DSGE.DSGE.preprocess   = preprocess

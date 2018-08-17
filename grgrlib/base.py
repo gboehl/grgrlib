@@ -68,6 +68,9 @@ def re_bc(N, d_endo):
     return -res.real
     """
 
+def nul(n):
+    return np.zeros((n,n))
+
 def iuc(x, y):
     out = np.empty_like(x, dtype=bool)
     nonzero = (y != 0)
@@ -122,8 +125,8 @@ def get_sys(self, par, info = False):
 
     ## define transition shocks -> state
     D   = self.PSI(par)
+    H   = self.PSI(par)
     hit     = ~fast0(D, 1)
-    D2  = BB[hit].T @ D[hit]
 
     ## mask those vars that are either forward looking or part of the constraint
     in_x       = ~fast0(AA, 0) | ~fast0(b[:dim_v])
@@ -141,6 +144,9 @@ def get_sys(self, par, info = False):
 
     P       = np.block([[A1, -BB],
                         [np.zeros((dim_x,dim_x)), np.eye(dim_v)[in_x]]])
+
+    H1      = np.block([[H],
+                        [np.zeros((dim_x,H.shape[1]))]])
 
     c_arg       = list(vv_x2).index(self.const_var)
 
@@ -160,6 +166,7 @@ def get_sys(self, par, info = False):
 
     P2  = np.diag(s) @ V
     M2  = U.T @ M1
+    H2  = U.T @ H1
 
     c1  = U.T @ c_M
 
@@ -178,6 +185,7 @@ def get_sys(self, par, info = False):
     ## create the stuff that the algorithm needs
     N       = nl.inv(P2) @ M2 
     A       = nl.inv(P2) @ (M2 + np.outer(c1,b2))
+    H3      = nl.inv(P2) @ H2
 
     if sum(eig(A).round(3) >= 1) - len(vv_x3):
         warnings.warn('BC *not* satisfied.')
@@ -199,11 +207,11 @@ def get_sys(self, par, info = False):
               % (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4))
 
     ## add everything to the DSGE object
-    # self.vv     = vv_x3, vv_v
     self.vv     = vv_v
     self.obs_arg    = [ list(vv_v).index(ob) for ob in self['observables'] ]
     self.par    = par
-    self.sys 	= N, A, J, cx, b2, x_bar, D2
+    self.SIG    = BB.T @ D
+    self.sys 	= N, A, J, H3, cx, b2, x_bar
 
 
 def irfs(self, shocklist, wannasee = None, plot = True):
@@ -227,23 +235,21 @@ def irfs(self, shocklist, wannasee = None, plot = True):
 
     for t in range(30):
 
+        shk_vec     = np.zeros(len(self.shocks))
         for vec in shocklist: 
             if vec[2] == t:
 
-                shk_vec     = np.zeros(len(self.shocks))
                 shock       = vec[0]
                 shocksize   = vec[1]
 
                 shock_arg           = [v.name for v in self.shocks].index(shock)
                 shk_vec[shock_arg]  = shocksize
 
-                st_vec += self.sys[-1] @ shk_vec
-
-                shk_process     = (self.sys[-1] @ shk_vec).nonzero()
+                shk_process     = (self.SIG @ shk_vec).nonzero()
 
                 args_see += shk_process
 
-        st_vec, (l,k), flag     = boehlgorithm(self, st_vec)
+        st_vec, (l,k), flag     = boehlgorithm(self, st_vec, shk_vec)
 
         if flag: 
             superflag   = True
@@ -288,34 +294,48 @@ def irfs(self, shocklist, wannasee = None, plot = True):
     self.ts_labels     = self.vv[care_for]
 
 
+"""
 def t_func(self, state, noise = None, return_k = False):
 
-    newstate, (l,k), flag   = boehlgorithm(self, state)
     if noise is not None:
-        newstate 	            += self.sys[-1] @ noise
+        state   += self.sys[-1] @ noise
+    newstate, (l,k), flag   = boehlgorithm(self, state, shock)
+
+    if return_k: 	return newstate, (l,k), flag
+    else: 			return newstate
+    """
+
+
+def t_func(self, state, noise = None, return_k = False):
+
+    if noise is not None:
+        newstate, (l,k), flag   = boehlgorithm(self, state, noise)
+    else:
+        newstate, (l,k), flag   = boehlgorithm(self, state, 0)
 
     if return_k: 	return newstate, (l,k), flag
     else: 			return newstate
 
-
-def create_filter(self, par, alpha = .25, obs_var = .2):
+def create_filter(self, alpha = .25, obs_var = .2):
 
     dim_v       = len(self.vv)
     beta_ukf 	= 2.
-    kappa_ukf 	= 3 - self.ny
+    ## definitely needs a fix
+    # kappa_ukf 	= 3 - self.ny
+    kappa_ukf 	= 3 - dim_v
 
     if not hasattr(self, 'Z'):
         warnings.warn('No time series of observables provided')
     else:
         sig_obs 	= np.std(self.Z,0)*obs_var
 
-    exo_args    = ~fast0(self.sys[-1],1)
+    exo_args    = ~fast0(self.SIG,1)
 
     spoints     = ReducedScaledSigmaPoints(alpha, beta_ukf, kappa_ukf, exo_args)
     ukf 		= UKF(dim_x=dim_v, dim_z=self.ny, hx=self.obs_arg, fx=self.t_func, points=spoints)
     ukf.x 		= np.zeros(dim_v)
     ukf.R 		= np.diag(sig_obs)**2
-    CO          = self.sys[-1] @ self.QQ(par)
+    CO          = self.SIG @ self.QQ(self.par)
     ukf.Q 		= CO @ CO.T
 
     self.ukf    = ukf
@@ -323,9 +343,11 @@ def create_filter(self, par, alpha = .25, obs_var = .2):
 
 def run_filter(self):
 
-    exo_args    = ~fast0(self.sys[-1],1)
+    exo_args    = ~fast0(self.SIG,1)
 
     X1, cov, yy, ll     = self.ukf.batch_filter(self.Z)
+    ## definitely needs a fix as well
+    # X1, _, _            = self.ukf.rts_smoother(X1, cov)
 
     self.filtered_Z     = X1[:,self.obs_arg]
     self.filtered_X     = X1
