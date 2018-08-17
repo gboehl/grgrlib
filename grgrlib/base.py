@@ -125,7 +125,8 @@ def get_sys(self, par, info = False):
 
     ## define transition shocks -> state
     D   = self.PSI(par)
-    H   = self.PSI(par)
+    H   = - D.copy()
+    # H   = self.PSI(par)
     hit     = ~fast0(D, 1)
 
     ## mask those vars that are either forward looking or part of the constraint

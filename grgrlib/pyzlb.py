@@ -107,11 +107,19 @@ def LL_jit(l, k, s, v, eps, vals):
 
     k0 		= max(s-l, 0)
     l0 		= min(l, s)
-    N_k 		    = nl.matrix_power(N,k0)
-    A_k             = nl.matrix_power(A,l0)
-    matrices 		= N_k @ A_k
+    if l0:
+        N_k 		    = nl.matrix_power(N,k0)
+        A_k             = nl.matrix_power(A,l0-1)
+        matrices 		= N_k @ A_k @ A
+        tran 		    = N_k @ A_k
+    elif k0:
+        N_k 		    = nl.matrix_power(N,k0-1)
+        matrices 		= N_k @ N
+        tran 		    = N_k 
+    else:
+        matrices    = tran  = np.eye(dim_y)
     term			= geom_series(N, k0) @ cx
-    return matrices[:,:dim_x] @ SS_jit(vals, l, k, v, eps) + matrices[:,dim_x:] @ v + term - H @ eps
+    return matrices[:,:dim_x] @ SS_jit(vals, l, k, v, eps) + matrices[:,dim_x:] @ v + term + tran @ H @ eps
 
 
 @njit(cache=True)
@@ -120,12 +128,20 @@ def SS_jit(vals, l, k, v, eps):
     N, A, J, H, cx  = vals
     dim_x, dim_y    = J.shape
 
-    N_k 		= nl.matrix_power(N,k)
-    A_k         = nl.matrix_power(A,l)
-    JN			= J @ N_k @ A_k
     term 		= J @ geom_series(N, k) @ cx
+    if l:
+        N_k 		= nl.matrix_power(N,k)
+        A_k         = nl.matrix_power(A,l-1)
+        tran        = J @ N_k @ A_k
+        JN			= J @ N_k @ A_k @ A
+    elif k:
+        N_k 		= nl.matrix_power(N,k-1)
+        tran        = J @ N_k
+        JN			= J @ N_k @ N
+    else:
+        tran    = JN    = J
     core        = -nl.inv(JN[:,:dim_x]) 
-    return core @ JN[:,dim_x:] @ v + core @ term - J @ H @ eps
+    return core @ JN[:,dim_x:] @ v + core @ term + core @ tran @ H @ eps
 
 
 @njit(cache=True)
