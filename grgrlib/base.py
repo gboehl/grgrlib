@@ -257,6 +257,7 @@ def irfs(self, shocklist, wannasee = None, plot = True):
     if superflag:
         warnings.warn('Numerical errors in boehlgorithm, did not converge')
 
+    """
     if plot:
         plt_no      = X.shape[1] // 4 + bool(X.shape[1]%4)
 
@@ -273,13 +274,12 @@ def irfs(self, shocklist, wannasee = None, plot = True):
                     ax[j].spines['right'].set_visible(False)
                     ax[j].set_xlabel(labels[l], fontsize=13)
             plt.tight_layout()
+            if savepath is not None:
+                plt.savefig(savepath+str(i+1)+'.pdf')
             plt.show()
+            """
 
-    self.ts_Y     = Y
-    self.ts_X     = X
-    self.ts_K     = K
-    self.ts_L     = L
-    self.ts_labels     = self.vv[care_for]
+    return X, self.vv[care_for], (Y, K, L)
 
 
 def t_func(self, state, noise = None, return_k = False):
@@ -292,6 +292,7 @@ def t_func(self, state, noise = None, return_k = False):
 
     if return_k: 	return newstate, (l,k), flag
     else: 			return newstate
+
 
 def create_filter(self, alpha = .25, scale_obs = .2):
 
@@ -337,25 +338,30 @@ def run_filter(self, use_rts=False):
     self.residuals      = Y[:,exo_args]
 
 
-def pplot(yscale, X, labels, title='', line='-', savepath=None, Y=None):
+def pplot(X, labels, yscale=None, title='', linestyle='-', savepath=None, Y=None):
     plt_no      = X.shape[1] // 4 + bool(X.shape[1]%4)
+    if yscale is None:
+        yscale  = np.arange(X.shape[0])
     for i in range(plt_no):
         ax  = plt.subplots(2,2)[1].flatten()
         for j in range(4):
             if 4*i+j >= X.shape[1]:
                 ax[j].set_visible(False)
             else:
-                if Y is not None:
-                    ax[j].plot(yscale, Y[:,4*i+j], line)
-                ax[j].plot(yscale, X[:,4*i+j], line)
+                if X.shape[1] > 4*i+j:
+                    ax[j].plot(yscale, X[:,4*i+j], linestyle=linestyle, lw=2)
+                if Y.shape[1] > 4*i+j:
+                    if Y is not None:
+                        ax[j].plot(yscale, Y[:,4*i+j], linestyle=linestyle, lw=2)
                 ax[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
                 ax[j].spines['top'].set_visible(False)
                 ax[j].spines['right'].set_visible(False)
                 ax[j].set_xlabel(labels[4*i+j], fontsize=14)
-        plt.suptitle('%s %s' %(title,i+1), fontsize=16)
+        if title:
+            plt.suptitle('%s %s' %(title,i+1), fontsize=16)
         plt.tight_layout()
         if savepath is not None:
-            plt.save(savepath+title+str(i+1))
+            plt.savefig(savepath+title+str(i+1)+'.pdf')
         plt.show()
 
 
