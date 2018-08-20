@@ -337,6 +337,28 @@ def run_filter(self, use_rts=False):
     self.residuals      = Y[:,exo_args]
 
 
+def pplot(yscale, X, labels, title='', line='-', savepath=None, Y=None):
+    plt_no      = X.shape[1] // 4 + bool(X.shape[1]%4)
+    for i in range(plt_no):
+        ax  = plt.subplots(2,2)[1].flatten()
+        for j in range(4):
+            if 4*i+j >= X.shape[1]:
+                ax[j].set_visible(False)
+            else:
+                if Y is not None:
+                    ax[j].plot(yscale, Y[:,4*i+j], line)
+                ax[j].plot(yscale, X[:,4*i+j], line)
+                ax[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
+                ax[j].spines['top'].set_visible(False)
+                ax[j].spines['right'].set_visible(False)
+                ax[j].set_xlabel(labels[4*i+j], fontsize=14)
+        plt.suptitle('%s %s' %(title,i+1), fontsize=16)
+        plt.tight_layout()
+        if savepath is not None:
+            plt.save(savepath+title+str(i+1))
+        plt.show()
+
+
 pydsge.DSGE.DSGE.get_sys            = get_sys
 pydsge.DSGE.DSGE.t_func             = t_func
 pydsge.DSGE.DSGE.irfs               = irfs
