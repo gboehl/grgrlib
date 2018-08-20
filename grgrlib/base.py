@@ -15,8 +15,10 @@ from grgrlib.pyzlb import *
 import pydsge
 import matplotlib.pyplot as plt
 from numba import njit
-from filterpy.kalman import ReducedScaledSigmaPoints
 from filterpy.kalman import UnscentedKalmanFilter as UKF
+from filterpy.kalman import ReducedScaledSigmaPoints
+from filterpy.kalman import MerweScaledSigmaPoints
+from filterpy.kalman import SigmaPoints_ftl
 
 def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
@@ -51,25 +53,9 @@ def subt(A, B):
 	return res
 
 
-"""     ## old version using eigenvector-eigenvalue decomposition
-def re_bc(N, d_endo):
-
-    eigvals, eigvecs 	= nl.eig(N)
-
-    idx             	= np.abs(eigvals).argsort()[::-1]
-
-    eigvecs      		= nl.inv(eigvecs[:,idx])     
-
-    res     = nl.inv(eigvecs[:d_endo,:d_endo]) @ eigvecs[:d_endo,d_endo:]
-
-    if not fast0(res.imag,2):
-        warnings.warn('Non-neglible imaginary parts in OMEGA')
-
-    return -res.real
-    """
-
 def nul(n):
     return np.zeros((n,n))
+
 
 def iuc(x, y):
     out = np.empty_like(x, dtype=bool)
@@ -209,7 +195,8 @@ def get_sys(self, par, info = False):
 
     ## add everything to the DSGE object
     self.vv     = vv_v
-    self.obs_arg    = [ list(vv_v).index(ob) for ob in self['observables'] ]
+    self.obs_arg        = [ list(vv_v).index(ob) for ob in self['observables'] ]
+    self.observables    = self['observables']
     self.par    = par
     self.SIG    = BB.T @ D
     self.sys 	= N, A, J, H3, cx, b2, x_bar
@@ -295,44 +282,34 @@ def irfs(self, shocklist, wannasee = None, plot = True):
     self.ts_labels     = self.vv[care_for]
 
 
-"""
-def t_func(self, state, noise = None, return_k = False):
-
-    if noise is not None:
-        state   += self.sys[-1] @ noise
-    newstate, (l,k), flag   = boehlgorithm(self, state, shock)
-
-    if return_k: 	return newstate, (l,k), flag
-    else: 			return newstate
-    """
-
-
 def t_func(self, state, noise = None, return_k = False):
 
     if noise is not None:
         newstate, (l,k), flag   = boehlgorithm(self, state, noise)
     else:
-        newstate, (l,k), flag   = boehlgorithm(self, state, 0)
+        zro     = np.zeros(self.SIG.shape[1])
+        newstate, (l,k), flag   = boehlgorithm(self, state, zro)
 
     if return_k: 	return newstate, (l,k), flag
     else: 			return newstate
 
-def create_filter(self, alpha = .25, obs_var = .2):
+def create_filter(self, alpha = .25, scale_obs = .2):
 
     dim_v       = len(self.vv)
     beta_ukf 	= 2.
-    ## definitely needs a fix
-    # kappa_ukf 	= 3 - self.ny
     kappa_ukf 	= 3 - dim_v
 
     if not hasattr(self, 'Z'):
         warnings.warn('No time series of observables provided')
     else:
-        sig_obs 	= np.std(self.Z,0)*obs_var
+        sig_obs 	= np.std(self.Z, 0)*scale_obs
 
     exo_args    = ~fast0(self.SIG,1)
 
-    spoints     = ReducedScaledSigmaPoints(alpha, beta_ukf, kappa_ukf, exo_args)
+    ## ReducedScaledSigmaPoints are an attemp to reduce the number of necessary sigma points. 
+    ## As of yet not functional
+    # spoints     = ReducedScaledSigmaPoints(alpha, beta_ukf, kappa_ukf, exo_args)
+    spoints     = SigmaPoints_ftl(dim_v,alpha, beta_ukf, kappa_ukf)
     ukf 		= UKF(dim_x=dim_v, dim_z=self.ny, hx=self.obs_arg, fx=self.t_func, points=spoints)
     ukf.x 		= np.zeros(dim_v)
     ukf.R 		= np.diag(sig_obs)**2
@@ -342,19 +319,22 @@ def create_filter(self, alpha = .25, obs_var = .2):
     self.ukf    = ukf
 
 
-def run_filter(self):
+def run_filter(self, use_rts=False):
 
     exo_args    = ~fast0(self.SIG,1)
 
-    X1, cov, yy, ll     = self.ukf.batch_filter(self.Z)
-    ## definitely needs a fix as well
-    # X1, _, _            = self.ukf.rts_smoother(X1, cov)
+    X1, cov, Y, ll     = self.ukf.batch_filter(self.Z)
+
+    ## the actual filter seems to work better than the smoother. The implemented version (succesfully) 
+    ## uses the pseudoinverse to deal with the fact that the co-variance matrix is singular
+    if use_rts:
+        X1, _, _            = self.ukf.rts_smoother(X1, cov)
 
     self.filtered_Z     = X1[:,self.obs_arg]
     self.filtered_X     = X1
     self.filtered_V     = X1[:,exo_args]
     self.ll             = ll
-    self.residuals      = yy
+    self.residuals      = Y[:,exo_args]
 
 
 pydsge.DSGE.DSGE.get_sys            = get_sys
