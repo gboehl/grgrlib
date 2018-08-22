@@ -175,7 +175,8 @@ def get_sys(self, par, info = False):
     H3      = nl.inv(P2) @ H2
 
     if sum(eig(A).round(3) >= 1) - len(vv_x3):
-        warnings.warn('BC *not* satisfied.')
+        # warnings.warn('BC *not* satisfied.')
+        raise ValueError('BC *not* satisfied.')
 
     dim_x       = len(vv_x3)
     OME         = re_bc(A, dim_x)
@@ -314,6 +315,7 @@ def create_filter(self, alpha = .25, scale_obs = .2):
     ukf 		= UKF(dim_x=dim_v, dim_z=self.ny, hx=self.obs_arg, fx=self.t_func, points=spoints)
     ukf.x 		= np.zeros(dim_v)
     ukf.R 		= np.diag(sig_obs)**2
+
     CO          = self.SIG @ self.QQ(self.par)
     ukf.Q 		= CO @ CO.T
 
@@ -338,7 +340,7 @@ def run_filter(self, use_rts=False):
     self.residuals      = Y[:,exo_args]
 
 
-def pplot(X, labels, yscale=None, title='', linestyle='-', savepath=None, Y=None):
+def pplot(X, labels, yscale=None, title='', style='-', savepath=None, Y=None):
     plt_no      = X.shape[1] // 4 + bool(X.shape[1]%4)
     if yscale is None:
         yscale  = np.arange(X.shape[0])
@@ -349,10 +351,10 @@ def pplot(X, labels, yscale=None, title='', linestyle='-', savepath=None, Y=None
                 ax[j].set_visible(False)
             else:
                 if X.shape[1] > 4*i+j:
-                    ax[j].plot(yscale, X[:,4*i+j], linestyle=linestyle, lw=2)
-                if Y.shape[1] > 4*i+j:
-                    if Y is not None:
-                        ax[j].plot(yscale, Y[:,4*i+j], linestyle=linestyle, lw=2)
+                    ax[j].plot(yscale, X[:,4*i+j], style, lw=2)
+                if Y is not None:
+                    if Y.shape[1] > 4*i+j:
+                        ax[j].plot(yscale, Y[:,4*i+j], style, lw=2)
                 ax[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
                 ax[j].spines['top'].set_visible(False)
                 ax[j].spines['right'].set_visible(False)
