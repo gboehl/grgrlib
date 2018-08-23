@@ -15,10 +15,8 @@ from grgrlib.pyzlb import *
 import pydsge
 import matplotlib.pyplot as plt
 from numba import njit
-from filterpy.kalman import UnscentedKalmanFilter as UKF
-from filterpy.kalman import ReducedScaledSigmaPoints
-from filterpy.kalman import MerweScaledSigmaPoints
-from filterpy.kalman import SigmaPoints_ftl
+import time
+
 
 def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
@@ -93,6 +91,8 @@ def fast0(A, mode=None):
         return np.allclose(A, 0)
 
 def get_sys(self, par, info = False):
+
+    st  = time.time()
 
     if not self.const_var:
         warnings.warn('Code is only meant to work with OBCs')
@@ -190,9 +190,9 @@ def get_sys(self, par, info = False):
     cc2  = cx[dim_x:]
     bb1  = b2[:dim_x]
 
-    if info:
-        print('Creation of system matrices finished. Condition value is %s.' 
-              % (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4))
+    if info == 1:
+        print('Creation of system matrices finished in %ss. Condition value is %s.' 
+              % (np.round(time.time() - st,3), (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4)))
 
     ## add everything to the DSGE object
     self.vv     = vv_v
@@ -258,28 +258,6 @@ def irfs(self, shocklist, wannasee = None, plot = True):
     if superflag:
         warnings.warn('Numerical errors in boehlgorithm, did not converge')
 
-    """
-    if plot:
-        plt_no      = X.shape[1] // 4 + bool(X.shape[1]%4)
-
-        for i in range(plt_no):
-            ax  = plt.subplots(2,2)[1].flatten()
-            for j in range(4):
-                if 4*i+j >= len(care_for):
-                    ax[j].set_visible(False)
-                else:
-                    l   = care_for[4*i+j]
-                    ax[j].plot(X[:,4*i+j], lw=3)
-                    ax[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
-                    ax[j].spines['top'].set_visible(False)
-                    ax[j].spines['right'].set_visible(False)
-                    ax[j].set_xlabel(labels[l], fontsize=13)
-            plt.tight_layout()
-            if savepath is not None:
-                plt.savefig(savepath+str(i+1)+'.pdf')
-            plt.show()
-            """
-
     return X, self.vv[care_for], (Y, K, L)
 
 
@@ -296,6 +274,11 @@ def t_func(self, state, noise = None, return_k = False):
 
 
 def create_filter(self, alpha = .25, scale_obs = .2):
+
+    from filterpy.kalman import UnscentedKalmanFilter as UKF
+    # from filterpy.kalman import ReducedScaledSigmaPoints
+    # from filterpy.kalman import MerweScaledSigmaPoints
+    from filterpy.kalman import SigmaPoints_ftl
 
     dim_v       = len(self.vv)
     beta_ukf 	= 2.
@@ -322,7 +305,10 @@ def create_filter(self, alpha = .25, scale_obs = .2):
     self.ukf    = ukf
 
 
-def run_filter(self, use_rts=False):
+def run_filter(self, use_rts=False, info=False):
+
+    if info == 1:
+        st  = time.time()
 
     exo_args    = ~fast0(self.SIG,1)
 
@@ -338,6 +324,9 @@ def run_filter(self, use_rts=False):
     self.filtered_V     = X1[:,exo_args]
     self.ll             = ll
     self.residuals      = Y[:,exo_args]
+
+    if info == 1:
+        print('Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')
 
 
 def pplot(X, labels, yscale=None, title='', style='-', savepath=None, Y=None):
@@ -367,8 +356,100 @@ def pplot(X, labels, yscale=None, title='', style='-', savepath=None, Y=None):
         plt.show()
 
 
+def bayesian_estimation(self, sample_size = 20000, scale_obs = 0.2, no_cores = None, info=False):
+
+    import pymc3 as pm
+    import theano.tensor as tt
+    from theano.compile.ops import as_op
+    import multiprocessing
+
+    if no_cores is None:
+        no_cores    = multiprocessing.cpu_count()
+
+    ## dry run before the fun beginns
+    self.create_filter(scale_obs = scale_obs)
+    self.ukf.R[-1,-1]  /= 100
+    self.run_filter()
+    print("Model operational. Ready for estimation.")
+
+    ## from here different from filtering
+    par_active  = np.array(self.par).copy()
+
+    p_names     = [ p.name for p in self.parameters ]
+    priors      = self['__data__']['estimation']['prior']
+    prior_arg   = [ p_names.index(pp) for pp in priors.keys() ]
+
+    init_par    = dict(zip(np.array(p_names)[prior_arg], np.array(self.par)[prior_arg]))
+
+    tlist   = []
+    for i in range(len(priors)):
+        tlist.append(tt.dscalar)
+
+    @as_op(itypes=tlist, otypes=[tt.dvector])
+    def get_ll(*parameters):
+        st  = time.time()
+
+        try: 
+            par_active[prior_arg]  = parameters
+            par_active_lst  = list(par_active)
+
+            self.get_sys(par_active_lst)
+            self.preprocess(info=info)
+
+            self.create_filter(scale_obs = scale_obs)
+            self.ukf.R[-1,-1]  /= 100
+            self.run_filter(info=info)
+
+            if info == 2:
+                print('Sample took '+str(np.round(time.time() - st))+'s.')
+            return self.ll.reshape(1)
+
+        except:
+
+            if info == 2:
+                print('Sample took '+str(np.round(time.time() - st))+'s. (failure)')
+            return np.array(-sys.maxsize - 1, dtype=float).reshape(1)
+
+
+    with pm.Model() as model:
+        
+        be_pars_lst     = []
+        for pp in priors:
+            dist    = priors[str(pp)]
+            pmean = dist[1]
+            pstdd = dist[2]
+            if str(dist[0]) == 'uniform':
+                be_pars_lst.append( pm.Uniform(str(pp), dist[1], dist[2]) )
+            elif str(dist[0]) == 'inv_gamma':
+                alp     = pmean**2/pstdd**2 + 2
+                bet     = pmean*(alp - 1)
+                be_pars_lst.append( pm.InverseGamma(str(pp), alp, bet) )
+            elif str(dist[0]) == 'normal':
+                be_pars_lst.append( pm.Normal(str(pp), pmean, pstdd) )
+            elif str(dist[0]) == 'gamma':
+                bet = pstdd**2/pmean
+                alp = pmean/b
+                be_pars_lst.append( pm.Gamma(str(pp), alp, bet) )
+            elif str(dist[0]) == 'beta':
+                alp     = (1-pmean)*pmean**2/pstdd**2 - pmean
+                bet     = alp*(1/pmean - 1)
+                be_pars_lst.append( pm.Beta(str(pp), alp, bet) )
+            else:
+                print('Distribution not implemented')
+            print('Adding parameter %s as %s to the prior distributions.' %(pp, dist[0]))
+
+        be_pars = tuple(be_pars_lst)
+
+        pm.Potential('logllh', get_ll(*be_pars))
+        
+        # self.MAP = pm.find_MAP(start=init_par, method='Powell')
+        self.MAP = init_par
+        step = pm.Metropolis()
+        self.trace = pm.sample(int(sample_size/(no_cores-1)), step=step, start=self.MAP, cores=no_cores-1)
+
 pydsge.DSGE.DSGE.get_sys            = get_sys
 pydsge.DSGE.DSGE.t_func             = t_func
 pydsge.DSGE.DSGE.irfs               = irfs
 pydsge.DSGE.DSGE.create_filter      = create_filter
 pydsge.DSGE.DSGE.run_filter         = run_filter
+pydsge.DSGE.DSGE.bayesian_estimation    = bayesian_estimation

@@ -58,7 +58,7 @@ def preprocess_jit(vals, ll_max, kk_max):
 def preprocess(self, ll_max = 5, kk_max = 20, info = False):
     st  = time.time()
     self.precalc_mat    = preprocess_jit(self.sys, ll_max, kk_max)
-    if info: 
+    if info == 1: 
         print('Preproceccing finished within %s s.' % np.round((time.time() - st), 3))
 
 
