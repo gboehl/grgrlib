@@ -356,7 +356,7 @@ def pplot(X, labels, yscale=None, title='', style='-', savepath=None, Y=None):
         plt.show()
 
 
-def bayesian_estimation(self, sample_size = 20000, scale_obs = 0.2, no_cores = None, info=False):
+def bayesian_estimation(self, sample_size = 20000, alpha = 0.2, scale_obs = 0.2, no_cores = None, info=False):
 
     import pymc3 as pm
     import theano.tensor as tt
@@ -444,11 +444,14 @@ def bayesian_estimation(self, sample_size = 20000, scale_obs = 0.2, no_cores = N
 
         pm.Potential('logllh', get_ll(*be_pars))
         
-        # self.MAP = pm.find_MAP(start=init_par, method='Powell')
-        self.MAP = pm.find_MAP(start=init_par, method='Nelder-Mead')
+        self.MAP = pm.find_MAP(start=init_par)
+        # self.MAP = pm.find_MAP(start=init_par, method='Nelder-Mead')
         # self.MAP = init_par
         step = pm.Metropolis()
-        self.trace = pm.sample(int(sample_size/(no_cores-1)), step=step, start=self.MAP, cores=no_cores-1)
+                               # int(sample_size/(no_cores-1))
+        self.trace = pm.sample(step=step, start=self.MAP, cores=no_cores-1)
+
+    return be_pars
 
 pydsge.DSGE.DSGE.get_sys            = get_sys
 pydsge.DSGE.DSGE.t_func             = t_func
