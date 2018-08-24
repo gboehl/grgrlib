@@ -90,7 +90,7 @@ def fast0(A, mode=None):
     else:
         return np.allclose(A, 0)
 
-def get_sys(self, par, info = False):
+def get_sys(self, par, care_for = None, info = False):
 
     st  = time.time()
 
@@ -194,18 +194,36 @@ def get_sys(self, par, info = False):
         print('Creation of system matrices finished in %ss. Condition value is %s.' 
               % (np.round(time.time() - st,3), (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4)))
 
+    ## reduce size of matrices if possible
+    if care_for is None or care_for is 'obs':
+        care_for    = [ o.name for o in self['observables'] ] 
+    if care_for == 'all':
+        care_for    = [ o.name for o in self.variables ] 
+
+    var_str     = [ v.name for v in vv_v ]
+    out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
+    out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & np.array([v not in care_for for v in var_str])
+
     ## add everything to the DSGE object
-    self.vv     = vv_v
+    self.vv     = vv_v[~out_msk[-len(vv_v):]]
     self.obs_arg        = [ list(vv_v).index(ob) for ob in self['observables'] ]
     self.observables    = self['observables']
     self.par    = par
-    self.SIG    = BB.T @ D
-    self.sys 	= N, A, J, H3, cx, b2, x_bar
+    self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
+    self.sys 	= N[~out_msk][:,~out_msk], A[~out_msk][:,~out_msk], J[:,~out_msk], H3[~out_msk], cx[~out_msk], b2[~out_msk], x_bar
+
+    ## add everything to the DSGE object
+    # self.vv     = vv_v
+    # self.obs_arg        = [ list(vv_v).index(ob) for ob in self['observables'] ]
+    # self.observables    = self['observables']
+    # self.par    = par
+    # self.SIG    = BB.T @ D
+    # self.sys 	= N, A, J, H3, cx, b2, x_bar
 
 
 def irfs(self, shocklist, wannasee = None, plot = True):
 
-    ## plots impule responses and returns the time series
+    ## returns time series of impule responses 
     ## shocklist: takes list of tuples of (shock, size, timing) 
     ## wannasee: list of strings of the variables to be plotted and stored
 
@@ -427,14 +445,8 @@ def bayesian_estimation(self, sample_size = 20000, alpha = 0.2, scale_obs = 0.2,
             elif str(dist[0]) == 'normal':
                 be_pars_lst.append( pm.Normal(str(pp), pmean, pstdd) )
             elif str(dist[0]) == 'gamma':
-                # bet = pstdd**2/pmean
-                # alp = pmean/bet
-                # be_pars_lst.append( pm.Gamma(str(pp), alp, bet) )
                 be_pars_lst.append( pm.Gamma(str(pp), mu=pmean, sd=pstdd) )
             elif str(dist[0]) == 'beta':
-                # alp     = (1-pmean)*pmean**2/pstdd**2 - pmean
-                # bet     = alp*(1/pmean - 1)
-                # be_pars_lst.append( pm.Beta(str(pp), alp, bet) )
                 be_pars_lst.append( pm.Beta(str(pp), mu=pmean, sd=pstdd) )
             else:
                 print('Distribution not implemented')
