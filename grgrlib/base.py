@@ -206,19 +206,21 @@ def get_sys(self, par, care_for = None, info = False):
 
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
-    self.obs_arg        = [ list(vv_v).index(ob) for ob in self['observables'] ]
+    self.obs_arg        = [ list(self.vv).index(ob) for ob in self['observables'] ]
     self.observables    = self['observables']
     self.par    = par
     self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
     self.sys 	= N[~out_msk][:,~out_msk], A[~out_msk][:,~out_msk], J[:,~out_msk], H3[~out_msk], cx[~out_msk], b2[~out_msk], x_bar
 
+    """
     ## add everything to the DSGE object
-    # self.vv     = vv_v
-    # self.obs_arg        = [ list(vv_v).index(ob) for ob in self['observables'] ]
-    # self.observables    = self['observables']
-    # self.par    = par
-    # self.SIG    = BB.T @ D
-    # self.sys 	= N, A, J, H3, cx, b2, x_bar
+    self.vv     = vv_v
+    self.obs_arg        = [ list(vv_v).index(ob) for ob in self['observables'] ]
+    self.observables    = self['observables']
+    self.par    = par
+    self.SIG    = BB.T @ D
+    self.sys 	= N, A, J, H3, cx, b2, x_bar
+    # """
 
 
 def irfs(self, shocklist, wannasee = None, plot = True):
@@ -291,7 +293,7 @@ def t_func(self, state, noise = None, return_k = False):
     else: 			return newstate
 
 
-def create_filter(self, alpha = .25, scale_obs = .2):
+def create_filter(self, alpha = .2, scale_obs = .2):
 
     from filterpy.kalman import UnscentedKalmanFilter as UKF
     # from filterpy.kalman import ReducedScaledSigmaPoints
