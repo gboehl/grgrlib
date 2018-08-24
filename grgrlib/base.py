@@ -376,7 +376,7 @@ def pplot(X, labels, yscale=None, title='', style='-', savepath=None, Y=None):
         plt.show()
 
 
-def bayesian_estimation(self, sample_size = 20000, alpha = 0.2, scale_obs = 0.2, no_cores = None, info=False):
+def bayesian_estimation(self, draws = 500, alpha = 0.2, scale_obs = 0.2, no_cores = None, info=False):
 
     import pymc3 as pm
     import theano.tensor as tt
@@ -463,7 +463,7 @@ def bayesian_estimation(self, sample_size = 20000, alpha = 0.2, scale_obs = 0.2,
         # self.MAP = init_par
         step = pm.Metropolis()
                                # int(sample_size/(no_cores-1))
-        self.trace = pm.sample(step=step, start=self.MAP, cores=no_cores-1)
+        self.trace = pm.sample(draws=draws, step=step, start=self.MAP, cores=no_cores-1)
 
     return be_pars
 
