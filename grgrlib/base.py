@@ -427,13 +427,15 @@ def bayesian_estimation(self, sample_size = 20000, scale_obs = 0.2, no_cores = N
             elif str(dist[0]) == 'normal':
                 be_pars_lst.append( pm.Normal(str(pp), pmean, pstdd) )
             elif str(dist[0]) == 'gamma':
-                bet = pstdd**2/pmean
-                alp = pmean/b
-                be_pars_lst.append( pm.Gamma(str(pp), alp, bet) )
+                # bet = pstdd**2/pmean
+                # alp = pmean/bet
+                # be_pars_lst.append( pm.Gamma(str(pp), alp, bet) )
+                be_pars_lst.append( pm.Gamma(str(pp), mu=pmean, sd=pstdd) )
             elif str(dist[0]) == 'beta':
-                alp     = (1-pmean)*pmean**2/pstdd**2 - pmean
-                bet     = alp*(1/pmean - 1)
-                be_pars_lst.append( pm.Beta(str(pp), alp, bet) )
+                # alp     = (1-pmean)*pmean**2/pstdd**2 - pmean
+                # bet     = alp*(1/pmean - 1)
+                # be_pars_lst.append( pm.Beta(str(pp), alp, bet) )
+                be_pars_lst.append( pm.Beta(str(pp), mu=pmean, sd=pstdd) )
             else:
                 print('Distribution not implemented')
             print('Adding parameter %s as %s to the prior distributions.' %(pp, dist[0]))
