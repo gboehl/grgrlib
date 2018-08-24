@@ -445,7 +445,8 @@ def bayesian_estimation(self, sample_size = 20000, scale_obs = 0.2, no_cores = N
         pm.Potential('logllh', get_ll(*be_pars))
         
         # self.MAP = pm.find_MAP(start=init_par, method='Powell')
-        self.MAP = init_par
+        self.MAP = pm.find_MAP(start=init_par, method='Nelder-Mead')
+        # self.MAP = init_par
         step = pm.Metropolis()
         self.trace = pm.sample(int(sample_size/(no_cores-1)), step=step, start=self.MAP, cores=no_cores-1)
 
