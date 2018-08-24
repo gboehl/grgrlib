@@ -376,7 +376,7 @@ def pplot(X, labels, yscale=None, title='', style='-', savepath=None, Y=None):
         plt.show()
 
 
-def bayesian_estimation(self, draws = 500, alpha = 0.2, scale_obs = 0.2, no_cores = None, info=False):
+def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.2, draws = 500, tune = 500, no_cores = None, info=False):
 
     import pymc3 as pm
     import theano.tensor as tt
@@ -438,6 +438,7 @@ def bayesian_estimation(self, draws = 500, alpha = 0.2, scale_obs = 0.2, no_core
             dist    = priors[str(pp)]
             pmean = dist[1]
             pstdd = dist[2]
+
             if str(dist[0]) == 'uniform':
                 be_pars_lst.append( pm.Uniform(str(pp), dist[1], dist[2]) )
             elif str(dist[0]) == 'inv_gamma':
@@ -445,7 +446,7 @@ def bayesian_estimation(self, draws = 500, alpha = 0.2, scale_obs = 0.2, no_core
                 bet     = pmean*(alp - 1)
                 be_pars_lst.append( pm.InverseGamma(str(pp), alp, bet) )
             elif str(dist[0]) == 'normal':
-                be_pars_lst.append( pm.Normal(str(pp), pmean, pstdd) )
+                be_pars_lst.append( pm.Normal(str(pp), mu=pmean, sd=pstdd) )
             elif str(dist[0]) == 'gamma':
                 be_pars_lst.append( pm.Gamma(str(pp), mu=pmean, sd=pstdd) )
             elif str(dist[0]) == 'beta':
@@ -462,8 +463,7 @@ def bayesian_estimation(self, draws = 500, alpha = 0.2, scale_obs = 0.2, no_core
         # self.MAP = pm.find_MAP(start=init_par, method='Nelder-Mead')
         # self.MAP = init_par
         step = pm.Metropolis()
-                               # int(sample_size/(no_cores-1))
-        self.trace = pm.sample(draws=draws, step=step, start=self.MAP, cores=no_cores-1)
+        self.trace = pm.sample(draws=draws, tune=tune, step=step, start=self.MAP, cores=no_cores-1, random_seed=list(np.arange(no_cores-1)))
 
     return be_pars
 
