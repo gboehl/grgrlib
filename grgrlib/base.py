@@ -384,7 +384,8 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.2, draws = 500, tune = 
     import multiprocessing
 
     if no_cores is None:
-        no_cores    = multiprocessing.cpu_count()
+        # no_cores    = multiprocessing.cpu_count() - 1
+        no_cores    = 4
 
     ## dry run before the fun beginns
     self.create_filter(scale_obs = scale_obs)
@@ -440,7 +441,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.2, draws = 500, tune = 
             pstdd = dist[2]
 
             if str(dist[0]) == 'uniform':
-                be_pars_lst.append( pm.Uniform(str(pp), dist[1], dist[2]) )
+                be_pars_lst.append( pm.Uniform(str(pp), lower=dist[1], upper=dist[2]) )
             elif str(dist[0]) == 'inv_gamma':
                 alp     = pmean**2/pstdd**2 + 2
                 bet     = pmean*(alp - 1)
@@ -461,11 +462,11 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.2, draws = 500, tune = 
         
         if use_find_MAP:
             self.MAP = pm.find_MAP(start=init_par)
-        # self.MAP = pm.find_MAP(start=init_par, method='Nelder-Mead')
+            # self.MAP = pm.find_MAP(start=init_par, method='Nelder-Mead')
         else:
             self.MAP = init_par
         step = pm.Metropolis()
-        self.trace = pm.sample(draws=draws, tune=tune, step=step, start=self.MAP, cores=no_cores-1, random_seed=list(np.arange(no_cores-1)))
+        self.trace = pm.sample(draws=draws, tune=tune, step=step, start=self.MAP, cores=no_cores, random_seed=list(np.arange(no_cores)))
 
     return be_pars
 
