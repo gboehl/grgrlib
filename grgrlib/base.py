@@ -375,6 +375,8 @@ def pplot(X, labels, yscale=None, title='', style='-', savepath=None, Y=None):
             plt.savefig(savepath+title+str(i+1)+'.pdf')
         plt.show()
 
+from pympler import muppy
+from pympler import tracker
 
 def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.2, draws = 500, tune = 500, no_cores = None, use_find_MAP = True, info = False):
 
@@ -406,9 +408,13 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.2, draws = 500, tune = 
     for i in range(len(priors)):
         tlist.append(tt.dscalar)
 
+    tr = tracker.SummaryTracker()
+
     @as_op(itypes=tlist, otypes=[tt.dvector])
     def get_ll(*parameters):
         st  = time.time()
+
+        tr.print_diff()
 
         try: 
             par_active[prior_arg]  = parameters
