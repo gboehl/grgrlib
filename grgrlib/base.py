@@ -493,7 +493,7 @@ class InvGamma(object):
                 -(b+1)/2*np.log(x**2) - b*a**2/(2*x**2))
         return lpdf
                        
-def wrap_sampler(p0, nwalkers, ndim, ndraws):
+def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores):
     ## very very dirty hack 
 
     import tqdm
@@ -507,7 +507,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws):
     def lprob_local(par):
         return lprob_global(par)
 
-    sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool=pathos.pools.ProcessPool(4))
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool=pathos.pools.ProcessPool(ncores))
 
     pbar    = tqdm.tqdm(total=ndraws, unit='sample(s)')
     for result in sampler.sample(p0, iterations=ndraws):
@@ -661,7 +661,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
 
     pos = [init_par + 1e-2*np.random.randn(ndim) for i in range(nwalkers)]
 
-    return wrap_sampler(pos, nwalkers, ndim, ndraws)
+    return wrap_sampler(pos, nwalkers, ndim, ndraws, ncores)
 
 pydsge.DSGE.DSGE.get_sys            = get_sys
 pydsge.DSGE.DSGE.t_func             = t_func
