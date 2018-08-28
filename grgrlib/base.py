@@ -10,6 +10,7 @@ sys.path.append('/home/gboehl/rsh/bs18/code/')
 import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
+from scipy.special import gammaln
 import warnings
 from grgrlib.pyzlb import *
 import pydsge
@@ -17,6 +18,7 @@ import matplotlib.pyplot as plt
 from numba import njit
 import time
 
+## this library needs major cleanup and must be distributed among several files while using an __init__.py file.
 
 def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
@@ -376,16 +378,18 @@ def pplot(X, labels, yscale=None, title='', style='-', savepath=None, Y=None):
             plt.savefig(savepath+title+str(i+1)+'.pdf')
         plt.show()
 
-def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.2, draws = 500, tune = 500, no_cores = None, use_find_MAP = True, info = False):
+## Bayesian Estimation using pymc3. Not operational for now (and probably never)
+"""
+def be_pymc(self, alpha = 0.2, scale_obs = 0.2, draws = 500, tune = 500, ncores = None, use_find_MAP = True, info = False):
 
     import pymc3 as pm
     import theano.tensor as tt
     from theano.compile.ops import as_op
     import multiprocessing
 
-    if no_cores is None:
-        # no_cores    = multiprocessing.cpu_count() - 1
-        no_cores    = 4
+    if ncores is None:
+        # ncores    = multiprocessing.cpu_count() - 1
+        ncores    = 4
 
     ## dry run before the fun beginns
     self.create_filter(scale_obs = scale_obs)
@@ -462,13 +466,202 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.2, draws = 500, tune = 
         
         if use_find_MAP:
             self.MAP = pm.find_MAP(start=init_par)
-            # self.MAP = pm.find_MAP(start=init_par, method='Nelder-Mead')
         else:
             self.MAP = init_par
         step = pm.Metropolis()
-        self.trace = pm.sample(draws=draws, tune=tune, step=step, start=self.MAP, cores=no_cores, random_seed=list(np.arange(no_cores)))
+        self.trace = pm.sample(draws=draws, tune=tune, step=step, start=self.MAP, cores=ncores, random_seed=list(np.arange(ncores)))
 
     return be_pars
+"""
+
+class InvGamma(object):
+    
+    name = 'inv_gamma'
+
+    def __init__(self, a, b):
+
+        self.a = a
+        self.b = b
+
+    def logpdf(self, x):
+        a = self.a
+        b = self.b
+        if x < 0:
+            return -1000000000000
+
+        lpdf = (np.log(2) - gammaln(b/2) + b/2*np.log(b*a**2/2)
+                -(b+1)/2*np.log(x**2) - b*a**2/(2*x**2))
+        return lpdf
+                       
+def wrap_sampler(p0, nwalkers, ndim, ndraws):
+    ## very very dirty hack 
+
+    import tqdm
+    import pathos
+    import emcee
+
+    ## globals are *evil*
+    global lprob_global
+
+    ## import the global function and hack it to pretend it is defined on the top level
+    def lprob_local(par):
+        return lprob_global(par)
+
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool=pathos.pools.ProcessPool(4))
+
+    pbar    = tqdm.tqdm(total=ndraws, unit='sample(s)')
+    for result in sampler.sample(p0, iterations=ndraws):
+        pbar.update(1)
+
+    pbar.close()
+
+    return sampler
+
+def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune = 500, ncores = None, nwalkers = 100, find_x0 = True, maxfev = 2500, info = False):
+
+    import pathos
+    import scipy.stats as ss
+    import scipy.optimize as so
+    import tqdm
+
+    if ncores is None:
+        ncores    = pathos.multiprocessing.cpu_count()
+
+    ## dry run before the fun beginns
+    self.create_filter(scale_obs = scale_obs)
+    self.ukf.R[-1,-1]  /= 100
+    self.run_filter()
+    print("Model operational. Ready for estimation.")
+
+    par_fix     = np.array(self.par).copy()
+
+    p_names     = [ p.name for p in self.parameters ]
+    priors      = self['__data__']['estimation']['prior']
+    prior_arg   = [ p_names.index(pp) for pp in priors.keys() ]
+
+    init_par    = par_fix[prior_arg]
+
+    ndim        = len(priors.keys())
+
+    priors_lst     = []
+    for pp in priors:
+        dist    = priors[str(pp)]
+        pmean = dist[1]
+        pstdd = dist[2]
+
+        ## simply make use of frozen distributions
+        if str(dist[0]) == 'uniform':
+            priors_lst.append( ss.uniform(loc=pmean, scale=pmean+pstdd) )
+        elif str(dist[0]) == 'inv_gamma':
+            priors_lst.append( InvGamma(a=pmean, b=pstdd) )
+        elif str(dist[0]) == 'normal':
+            priors_lst.append( ss.norm(loc=pmean, scale=pstdd) )
+        elif str(dist[0]) == 'gamma':
+            priors_lst.append( ss.gamma(loc=pmean, scale=pstdd) )
+        elif str(dist[0]) == 'beta':
+            a = (1-pmean)*pmean**2/pstdd**2 - pmean
+            b = a*(1/pmean - 1)
+            priors_lst.append( ss.beta(a=1, b=1) )
+        else:
+            print('Distribution not implemented')
+        print('Adding parameter %s as %s to the prior distributions.' %(pp, dist[0]))
+
+    def llike(parameters):
+
+        if info == 2:
+            st  = time.time()
+
+        try: 
+            par_fix[prior_arg]  = parameters
+            par_active_lst  = list(par_fix)
+
+            self.get_sys(par_active_lst)
+            self.preprocess(info=info)
+
+            self.create_filter(scale_obs = scale_obs)
+            self.ukf.R[-1,-1]  /= 100
+            self.run_filter(info=info)
+
+            if info == 2:
+                print('Sample took '+str(np.round(time.time() - st))+'s.')
+
+            return self.ll
+
+        except:
+
+            ## here could be a trigger to check for memmory leakage
+            if info == 2:
+                print('Sample took '+str(np.round(time.time() - st))+'s. (failure)')
+
+            return -np.inf
+
+    def lprior(pars):
+        prior = 0
+        for i in range(len(priors_lst)):
+            prior   += priors_lst[i].logpdf(pars[i])
+        return prior
+
+    def lprob(pars):
+        return lprior(pars) + llike(pars)
+    
+    global lprob_global
+
+    lprob_global    = lprob
+
+    class func_wrap(object):
+        ## thats a wrapper to have a progress par in the posterior maximization
+        
+        name = 'func_wrap'
+
+        def __init__(self, init_par):
+
+            self.n      = 0
+            self.maxfev = maxfev
+            self.pbar   = tqdm.tqdm(total=maxfev)
+            self.init_par   = init_par
+
+        def __call__(self, pars):
+
+            self.res   = -lprob(pars)
+            self.x     = pars
+
+            self.n  += 1
+
+            self.pbar.update()
+            self.pbar.set_description('ll: '+str(self.res.round(4)))
+
+            if self.n >= maxfev:
+                raise StopIteration
+
+            return self.res
+
+        def go(self):
+
+            try:
+                res         = so.minimize(self, self.init_par, method='Powell', tol=1e-5)
+                self.x      = res['x']
+                print('')
+                print(res['message'])
+                print('')
+
+            except (KeyboardInterrupt, StopIteration) as e:
+                self.pbar.close()
+                print('')
+                print('Maximum number of function calls exceeded, exiting...')
+                print('')
+
+            return self.x
+
+    if find_x0:
+        print('Finding initial values...')
+        result      = func_wrap(init_par).go()
+        init_par    = result
+
+    print('Initial values:', init_par.round(3))
+
+    pos = [init_par + 1e-2*np.random.randn(ndim) for i in range(nwalkers)]
+
+    return wrap_sampler(pos, nwalkers, ndim, ndraws)
 
 pydsge.DSGE.DSGE.get_sys            = get_sys
 pydsge.DSGE.DSGE.t_func             = t_func
