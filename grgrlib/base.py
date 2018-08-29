@@ -18,8 +18,6 @@ import matplotlib.pyplot as plt
 from numba import njit
 import time
 
-from mem_top import mem_top
-
 ## this library needs major cleanup and must be distributed among several files while using an __init__.py file.
 
 def eig(M):
@@ -485,7 +483,7 @@ class InvGamma(object):
                 -(b+1)/2*np.log(x**2) - b*a**2/(2*x**2))
         return lpdf
                        
-def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores):
+def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
     ## very very dirty hack 
 
     import tqdm
@@ -502,9 +500,13 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores):
     sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool=pathos.pools.ProcessPool(ncores))
     # sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local)
 
+    if not info: np.warnings.filterwarnings('ignore')
+
     pbar    = tqdm.tqdm(total=ndraws, unit='sample(s)')
     for result in sampler.sample(p0, iterations=ndraws):
         pbar.update(1)
+
+    if not info: np.warnings.filterwarnings('default')
 
     pbar.close()
 
@@ -565,30 +567,30 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
         if info == 2:
             st  = time.time()
 
-        try: 
+        with warnings.catch_warnings(record=True):
+        # if True:
+            try: 
+                par_fix[prior_arg]  = parameters
+                par_active_lst  = list(par_fix)
 
-            par_fix[prior_arg]  = parameters
-            par_active_lst  = list(par_fix)
+                self.get_sys(par_active_lst)
+                self.preprocess(info=info)
 
-            self.get_sys(par_active_lst)
-            self.preprocess(info=info)
+                self.create_filter(scale_obs = scale_obs)
+                self.ukf.R[-1,-1]  /= 100
+                self.run_filter(info=info)
 
-            self.create_filter(scale_obs = scale_obs)
-            self.ukf.R[-1,-1]  /= 100
-            self.run_filter(info=info)
+                if info == 2:
+                    print('Sample took '+str(np.round(time.time() - st))+'s.')
 
-            if info == 2:
-                print('Sample took '+str(np.round(time.time() - st))+'s.')
+                return self.ll
 
-            return self.ll
+            except:
 
-        except:
+                if info == 2:
+                    print('Sample took '+str(np.round(time.time() - st))+'s. (failure)')
 
-            # raise
-            if info == 2:
-                print('Sample took '+str(np.round(time.time() - st))+'s. (failure)')
-
-            return -np.inf
+                return -np.inf
 
     def lprior(pars):
         prior = 0
@@ -648,15 +650,20 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
             return self.x
 
     if find_x0:
-        print('Finding initial values...')
+        if not info:
+            np.warnings.filterwarnings('ignore')
+            print('Maximizing posterior distribution... (meanwhile warnings are disabled)')
+        else:
+            print('Maximizing posterior distribution...')
         result      = func_wrap(init_par).go()
+        np.warnings.filterwarnings('default')
         init_par    = result
 
     print('Initial values:', init_par.round(3))
 
     pos = [init_par + 1e-2*np.random.randn(ndim) for i in range(nwalkers)]
 
-    return wrap_sampler(pos, nwalkers, ndim, ndraws, ncores)
+    return wrap_sampler(pos, nwalkers, ndim, ndraws, ncores, info)
 
 pydsge.DSGE.DSGE.get_sys            = get_sys
 pydsge.DSGE.DSGE.t_func             = t_func
