@@ -1,14 +1,13 @@
 # grgrlib
-Library of standard functions serving several processes. Yet undocumented but straigtforward. Contains the functions for solving DSGE models @ZLB.
-
-For now only the solution method is implemented.
+Library of standard functions serving several processes. Yet undocumented but straigtforward. Contains the functions and classes for solving, filtering and estimating DSGE models @ZLB.
 
 Installation with pip:
+
+Clone the repository and then from within the cloned folder run.
 ```
 pip3 install .
 ```
-from the cloned git folder.
 
-The toolbox is in alpha state. Operational, but (yet) not ready for public use and I am not ready to provide any support. However, please feel free to send me a message if you are interested working with it.
+The toolbox is in alpha state. Operational, but (yet) not ready for public use and I can not provide any support. You are however very welcome to send me a message if you are interested working with the package.
 
-The beta stage will involve considerable restructuration of packages and code.
+The beta stage will involve considerable restructuration of packages, code, and the API.
