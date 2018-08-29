@@ -110,9 +110,10 @@ def create_LL(vals, l, k, s):
 
 
 @njit(cache=True)
-def LL_pp(l, k, s, v, eps, precalc_mat):
+# def LL_pp(l, k, s, v, eps, precalc_mat):
+def LL_pp(l, k, s, v, eps, SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran):
 
-    SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran  = precalc_mat
+    # SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran  = precalc_mat
 
     dim_x   = SS_mat.shape[2]
 
@@ -168,17 +169,24 @@ def LL_jit(l, k, s, v, eps, vals):
     return matrices[:,:dim_x] @ SS_jit(vals, l, k, v, eps) + matrices[:,dim_x:] @ v + term + tran @ H @ eps
 
 
-@njit(cache=True)
-def boehlgorithm_pp(vals, v, eps, precalc_mat, max_cnt):
-
     N, A, J, H, cx, b, x_bar    = vals
+
+@njit(cache=True)
+# def boehlgorithm_pp(vals, v, eps, precalc_mat, max_cnt):
+def boehlgorithm_pp(N, A, J, H, cx, b, x_bar , v, eps, SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran, max_cnt):
+
+    # SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran  = precalc_mat
+
+    # N, A, J, H, cx, b, x_bar    = vals
     dim_x, dim_y    = J.shape
 
     l, k 		= 0, 0
     l1, k1 		= 1, 1
 
-    l_max   = precalc_mat[0].shape[0] - 1
-    k_max   = precalc_mat[0].shape[1] 
+    # l_max   = precalc_mat[0].shape[0] - 1
+    # k_max   = precalc_mat[0].shape[1] - 1
+    l_max   = SS_mat.shape[0] - 1
+    k_max   = SS_mat.shape[1] - 1
 
     cnt     = 0
     flag    = False
@@ -188,14 +196,16 @@ def boehlgorithm_pp(vals, v, eps, precalc_mat, max_cnt):
             break
         l1, k1 		= l, k
         if l: l 		-= 1
-        while b @ LL_pp(l, k, l, v, eps, precalc_mat) - x_bar > 0:
+        # while b @ LL_pp(l, k, l, v, eps, precalc_mat) - x_bar > 0:
+        while b @ LL_pp(l, k, l, v, eps, SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran) - x_bar > 0:
             if l >= l_max:
                 l = 0
                 break
             l 	+= 1
         if (l) == (l1):
             if k: k 		-= 1
-            while b @ LL_pp(l, k, l+k, v, eps, precalc_mat) - x_bar < 0: 
+            # while b @ LL_pp(l, k, l+k, v, eps, precalc_mat) - x_bar < 0: 
+            while b @ LL_pp(l, k, l+k, v, eps, SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran) - x_bar < 0: 
                 k +=1
                 if k >= k_max:
                     # print('k_max reached, exiting')
@@ -203,7 +213,8 @@ def boehlgorithm_pp(vals, v, eps, precalc_mat, max_cnt):
         cnt += 1
 
     if not k: l = 1
-    v_new 	= LL_pp(l, k, 1, v, eps, precalc_mat)[dim_x:]
+    # v_new 	= LL_pp(l, k, 1, v, eps, precalc_mat)[dim_x:]
+    v_new 	= LL_pp(l, k, 1, v, eps, SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran)[dim_x:]
 
     return v_new, (l, k), flag
 
@@ -236,8 +247,9 @@ def boehlgorithm_jit(vals, v, eps, max_cnt, k_max = 20, l_max = 20):
             while b @ LL_jit(l, k, l+k, v, eps, vals[:5]) - x_bar < 0: 
                 k +=1
                 if k > k_max:
-                    print('k_max reached, exiting')
+                    # print('k_max reached, exiting')
                     break
+        cnt += 1
 
     if not k: l = 1
     v_new 	= LL_jit(l, k, 1, v, eps, vals[:5])[dim_x:]
@@ -248,7 +260,11 @@ def boehlgorithm_jit(vals, v, eps, max_cnt, k_max = 20, l_max = 20):
 def boehlgorithm(model_obj, v, eps, max_cnt = 5e1):
 
     if hasattr(model_obj, 'precalc_mat'):
-        return boehlgorithm_pp(model_obj.sys, v, eps, model_obj.precalc_mat, max_cnt)
+        SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran  = model_obj.precalc_mat
+        N, A, J, H, cx, b, x_bar    = model_obj.sys
+        return boehlgorithm_pp(N, A, J, H, cx, b, x_bar, v, eps, SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran, max_cnt)
+        # return boehlgorithm_pp(model_obj.sys, v, eps, SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran, max_cnt)
+        # return boehlgorithm_pp(model_obj.sys, v, eps, model_obj.precalc_mat, max_cnt)
     else:
         return boehlgorithm_jit(model_obj.sys, v, eps, max_cnt)
 
