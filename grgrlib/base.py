@@ -18,6 +18,8 @@ import matplotlib.pyplot as plt
 from numba import njit
 import time
 
+from mem_top import mem_top
+
 ## this library needs major cleanup and must be distributed among several files while using an __init__.py file.
 
 def eig(M):
@@ -214,16 +216,6 @@ def get_sys(self, par, care_for = None, info = False):
     self.par    = par
     self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
     self.sys 	= N[~out_msk][:,~out_msk], A[~out_msk][:,~out_msk], J[:,~out_msk], H3[~out_msk], cx[~out_msk], b2[~out_msk], x_bar
-
-    """
-    ## add everything to the DSGE object
-    self.vv     = vv_v
-    self.obs_arg        = [ list(vv_v).index(ob) for ob in self['observables'] ]
-    self.observables    = self['observables']
-    self.par    = par
-    self.SIG    = BB.T @ D
-    self.sys 	= N, A, J, H3, cx, b2, x_bar
-    # """
 
 
 def irfs(self, shocklist, wannasee = None, plot = True):
@@ -508,6 +500,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores):
         return lprob_global(par)
 
     sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local, pool=pathos.pools.ProcessPool(ncores))
+    # sampler = emcee.EnsembleSampler(nwalkers, ndim, lprob_local)
 
     pbar    = tqdm.tqdm(total=ndraws, unit='sample(s)')
     for result in sampler.sample(p0, iterations=ndraws):
@@ -566,12 +559,14 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
             print('Distribution not implemented')
         print('Adding parameter %s as %s to the prior distributions.' %(pp, dist[0]))
 
+
     def llike(parameters):
 
         if info == 2:
             st  = time.time()
 
         try: 
+
             par_fix[prior_arg]  = parameters
             par_active_lst  = list(par_fix)
 
@@ -589,7 +584,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
 
         except:
 
-            ## here could be a trigger to check for memmory leakage
+            # raise
             if info == 2:
                 print('Sample took '+str(np.round(time.time() - st))+'s. (failure)')
 
