@@ -69,6 +69,8 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
     if ncores is None:
         ncores    = pathos.multiprocessing.cpu_count()
 
+    self.preprocess(info=info)
+
     ## dry run before the fun beginns
     self.create_filter(scale_obs = scale_obs)
     self.ukf.R[-1,-1]  /= 100
