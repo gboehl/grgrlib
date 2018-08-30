@@ -220,13 +220,14 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
 
     print('Initial values:', init_par.round(3))
 
-    pos             = [init_par*(1+1e-1*np.random.randn(ndim)) for i in range(nwalkers)]
+    pos             = [init_par*(1+1e-2*np.random.randn(ndim)) for i in range(nwalkers)]
     sampler         = wrap_sampler(pos, nwalkers, ndim, ndraws, ncores, info)
 
     sampler.summary     = lambda: summary(sampler.chain[tune:], priors)
     sampler.traceplot   = lambda **args: traceplot(sampler.chain[tune:], varnames=priors, priors=priors_lst, **args)
     sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain[tune:], varnames=priors, **args)
-    sampler.priors      = priors_lst
+    sampler.prior_dist  = priors_lst
+    sampler.prior_names = [ pp for pp in priors.keys() ]
 
     self.sampler        = sampler
 
