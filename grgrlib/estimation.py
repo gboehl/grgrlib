@@ -19,11 +19,14 @@ class InvGamma(object):
 
         a = self.a
         b = self.b
-        if x < 0:
-            return -1000000000000
+        
+        lpdf    = np.copy(x)
 
-        lpdf = (np.log(2) - gammaln(b/2) + b/2*np.log(b*a**2/2)
-                -(b+1)/2*np.log(x**2) - b*a**2/(2*x**2))
+        lpdf[x < 0]     = -1000000000000
+
+        lpdf[x >= 0]    = (np.log(2) - gammaln(b/2) + b/2*np.log(b*a**2/2)
+                -(b+1)/2*np.log(x[ x>=0 ]**2) - b*a**2/(2*x**2))
+
         return lpdf
 
 def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
