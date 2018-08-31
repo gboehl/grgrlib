@@ -39,8 +39,10 @@ def create_filter(self, alpha = .2, scale_obs = .2):
     ## ReducedScaledSigmaPoints are an attemp to reduce the number of necessary sigma points. 
     ## As of yet not functional
     # spoints     = ReducedScaledSigmaPoints(alpha, beta_ukf, kappa_ukf, exo_args)
+
     spoints     = SigmaPoints_ftl(dim_v,alpha, beta_ukf, kappa_ukf)
-    ukf 		= UKF(dim_x=dim_v, dim_z=self.ny, hx=self.obs_arg, fx=self.t_func, points=spoints)
+    # ukf 		= UKF(dim_x=dim_v, dim_z=self.ny, hx=self.obs_arg, fx=self.t_func, points=spoints)
+    ukf 		= UKF(dim_x=dim_v, dim_z=self.ny, hx=self.hx, fx=self.t_func, points=spoints)
     ukf.x 		= np.zeros(dim_v)
     ukf.R 		= np.diag(sig_obs)**2
 
@@ -64,7 +66,8 @@ def run_filter(self, use_rts=False, info=False):
     if use_rts:
         X1, _, _            = self.ukf.rts_smoother(X1, cov)
 
-    self.filtered_Z     = X1[:,self.obs_arg]
+    # self.filtered_Z     = X1[:,self.obs_arg]
+    self.filtered_Z     = (self.hx[0] @ X1.T).T + self.hx[1]
     self.filtered_X     = X1
     self.filtered_V     = X1[:,exo_args]
     self.ll             = ll

@@ -58,3 +58,14 @@ def summary(trace, varnames, alpha=0.05):
     dforg = pd.concat(var_dfs, axis=0)
 
     return dforg
+
+def mc_mean(trace, varnames):
+    ## in most parts just stolen from pymc3 because it looks really nice
+
+    p_means     = []
+
+    for i, var in enumerate(varnames):
+        vals = trace[:,:,i]
+        p_means.append(np.mean(vals))
+
+    return p_means

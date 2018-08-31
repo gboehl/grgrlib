@@ -8,6 +8,7 @@ import warnings
 import pydsge
 from numba import njit
 import time
+from .pyzlb import boehlgorithm
 
 def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
@@ -192,20 +193,27 @@ def get_sys(self, par=None, care_for = None, info = False):
               % (np.round(time.time() - st,3), (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4)))
 
     ## reduce size of matrices if possible
-    if care_for is None or care_for is 'obs':
-        care_for    = [ o.name for o in self['observables'] ] 
-    if care_for == 'all':
-        care_for    = [ o.name for o in self.variables ] 
+    # if care_for is None or care_for is 'obs':
+        # care_for    = [ o.name for o in self['observables'] ] 
+    # if care_for == 'all':
+        # care_for    = [ o.name for o in self.variables ] 
 
     var_str     = [ v.name for v in vv_v ]
     out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
-    out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & np.array([v not in care_for for v in var_str])
+    # out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & np.array([v not in care_for for v in var_str])
+    out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
 
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
-    self.obs_arg        = [ list(self.vv).index(ob) for ob in self['observables'] ]
+    # self.obs_arg        = [ list(self.vv).index(ob) for ob in self['observables'] ]
+    # self.obs_arg        = np.where(self.ZZ(par))[1]
+
     self.observables    = self['observables']
     self.par    = par
+
+    # self.hx     = self.ZZ(par)[:,~out_msk[-len(vv_v):]], self.DD(par).squeeze()
+    self.hx     = self.ZZ(par)[:,~out_msk[-len(vv_v):]], self.DD(par).squeeze()
+    self.obs_arg        = np.where(self.hx[0])[1]
     self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
     self.sys 	= N[~out_msk][:,~out_msk], A[~out_msk][:,~out_msk], J[:,~out_msk], H3[~out_msk], cx[~out_msk], b2[~out_msk], x_bar
 
@@ -220,7 +228,7 @@ def irfs(self, shocklist, wannasee = None, plot = True):
     if wannasee is not None:
         args_see    = [labels.index(v) for v in wannasee]
     else:
-        args_see    = self.obs_arg.copy()
+        args_see    = list(self.obs_arg)
 
     st_vec          = np.zeros(len(self.vv))
 
@@ -243,8 +251,9 @@ def irfs(self, shocklist, wannasee = None, plot = True):
 
                 shk_process     = (self.SIG @ shk_vec).nonzero()
 
-                args_see += shk_process
-
+                for shk in shk_process:
+                    args_see += list(shk)
+                
         st_vec, (l,k), flag     = boehlgorithm(self, st_vec, shk_vec)
 
         if flag: 

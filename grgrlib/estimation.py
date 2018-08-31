@@ -47,7 +47,7 @@ def wrap_sampler(p0, nwalkers, ndim, ndraws, ncores, info):
 
     if not info: np.warnings.filterwarnings('ignore')
 
-    pbar    = tqdm.tqdm(total=ndraws, unit='sample(s)')
+    pbar    = tqdm.tqdm(total=ndraws, unit='sample(s)', dynamic_ncols=True)
     for result in sampler.sample(p0, iterations=ndraws):
         pbar.update(1)
 
@@ -64,6 +64,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
     import scipy.optimize as so
     import tqdm
     from .stats import summary
+    from .stats import mc_mean
     from .plots import traceplot, posteriorplot
 
     if ncores is None:
@@ -162,7 +163,7 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
 
             self.n      = 0
             self.maxfev = maxfev
-            self.pbar   = tqdm.tqdm(total=maxfev)
+            self.pbar   = tqdm.tqdm(total=maxfev, dynamic_ncols=True)
             self.init_par   = init_par
             self.st     = 0
             self.update_ival    = 1
@@ -230,6 +231,10 @@ def bayesian_estimation(self, alpha = 0.2, scale_obs = 0.15, ndraws = 500, tune 
     sampler.posteriorplot   = lambda **args: posteriorplot(sampler.chain[tune:], varnames=priors, **args)
     sampler.prior_dist  = priors_lst
     sampler.prior_names = [ pp for pp in priors.keys() ]
+    sampler.tune        = tune
+    par_mean            = par_fix
+    par_mean[prior_arg] = mc_mean(sampler.chain[tune:], varnames=priors)
+    sampler.par_means   = list(par_mean)
 
     self.sampler        = sampler
 
