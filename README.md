@@ -8,9 +8,9 @@ The related code is in alpha state and provided for reasons of replicability and
 
 The beta stage will involve considerable restructuring of packages, code, and the API.
 
-The dependencies are listed in the setup.py file. Note that this package depends on the `pydsge` and `filterpy-dsge` packages that can both be found on my github page.
+The dependencies are listed in the setup.py file. Note that this package depends on the `pydsge` and `filterpy-dsge` packages that can both be found on my github page (they will thus not be installed automatically via `pip`).
 
-Installation with pip:
+## Installation with `pip`
 
 Clone the repository and then from within the cloned folder run.
 ```

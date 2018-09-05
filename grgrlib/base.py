@@ -109,9 +109,7 @@ def get_sys(self, par=None, care_for = None, info = False):
 
     ## define transition shocks -> state
     D   = self.PSI(par)
-    H   = - D.copy()
-    # H   = self.PSI(par)
-    hit     = ~fast0(D, 1)
+    H   = -D.copy()
 
     ## mask those vars that are either forward looking or part of the constraint
     in_x       = ~fast0(AA, 0) | ~fast0(b[:dim_v])
@@ -129,7 +127,7 @@ def get_sys(self, par=None, care_for = None, info = False):
 
     P       = np.block([[A1, -BB],
                         [np.zeros((dim_x,dim_x)), np.eye(dim_v)[in_x]]])
-
+    
     H1      = np.block([[H],
                         [np.zeros((dim_x,H.shape[1]))]])
 
@@ -161,6 +159,7 @@ def get_sys(self, par=None, care_for = None, info = False):
     ## actual desingularization by iterating equations in M forward
     P2[s0]  = M2[s0]
 
+
     try:
         x_bar       = par[[p.name for p in self.parameters].index('x_bar')]
     except ValueError:
@@ -173,7 +172,6 @@ def get_sys(self, par=None, care_for = None, info = False):
     H3      = nl.inv(P2) @ H2
 
     if sum(eig(A).round(3) >= 1) - len(vv_x3):
-        # warnings.warn('BC *not* satisfied.')
         raise ValueError('BC *not* satisfied.')
 
     dim_x       = len(vv_x3)
@@ -192,33 +190,27 @@ def get_sys(self, par=None, care_for = None, info = False):
         print('Creation of system matrices finished in %ss. Condition value is %s.' 
               % (np.round(time.time() - st,3), (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4)))
 
-    ## reduce size of matrices if possible
-    # if care_for is None or care_for is 'obs':
-        # care_for    = [ o.name for o in self['observables'] ] 
-    # if care_for == 'all':
-        # care_for    = [ o.name for o in self.variables ] 
-
     var_str     = [ v.name for v in vv_v ]
     out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
-    # out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & np.array([v not in care_for for v in var_str])
     out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
+
+    B   = nl.inv(U @ P2) @ M1
+    H4          = H3[~out_msk]
 
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
-    # self.obs_arg        = [ list(self.vv).index(ob) for ob in self['observables'] ]
-    # self.obs_arg        = np.where(self.ZZ(par))[1]
 
     self.observables    = self['observables']
     self.par    = par
 
-    # self.hx     = self.ZZ(par)[:,~out_msk[-len(vv_v):]], self.DD(par).squeeze()
     self.hx     = self.ZZ(par)[:,~out_msk[-len(vv_v):]], self.DD(par).squeeze()
     self.obs_arg        = np.where(self.hx[0])[1]
+    # self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
     self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
     self.sys 	= N[~out_msk][:,~out_msk], A[~out_msk][:,~out_msk], J[:,~out_msk], H3[~out_msk], cx[~out_msk], b2[~out_msk], x_bar
 
 
-def irfs(self, shocklist, wannasee = None, plot = True):
+def irfs(self, shocklist, wannasee = None):
 
     ## returns time series of impule responses 
     ## shocklist: takes list of tuples of (shock, size, timing) 

@@ -140,7 +140,7 @@ def get_axis(ax, default_rows, default_columns, **default_kwargs):
         raise ValueError('Subplots with shape %r required' % (default_shape,))
     return ax
 
-def traceplot(trace, varnames, figsize=None, lines=None,
+def traceplot(trace, varnames, tune, figsize=None,
               combined=False, grid=False, alpha=0.35, priors=None,
               prior_alpha=1, prior_style='--', bw=4.5, ax=None):
     ## stolen from pymc3 with kisses
@@ -160,12 +160,16 @@ def traceplot(trace, varnames, figsize=None, lines=None,
         d   = d_stream
         x0 = 0
         width = len(d_stream)
-        artists = kdeplot_op(ax[i, 0], d, bw, prior, prior_alpha, prior_style)[0]
+        artists = kdeplot_op(ax[i, 0], d[tune:], bw, prior, prior_alpha, prior_style)[0]
         colors = [a[0].get_color() for a in artists]
         ax[i, 0].set_title(str(v))
         ax[i, 0].grid(grid)
         ax[i, 1].set_title(str(v))
-        ax[i, 1].plot(range(x0, x0 + width), d_stream, alpha=alpha)
+        ax[i, 1].plot(range(x0, tune), d_stream[:tune], alpha=alpha-.1)
+        ax[i, 1].plot(range(tune, x0 + width), d_stream[tune:], alpha=alpha)
+        ax[i, 1].plot([tune,tune], [ np.mean(d_stream, 1)[tune] - np.std(d_stream, 1)[tune]*3, 
+                                    np.mean(d_stream, 1)[tune] + np.std(d_stream, 1)[tune]*3],
+                      '--', alpha=.5, color='k')
 
         ax[i, 0].set_ylabel("Frequency")
         ax[i, 1].set_ylabel("Sample value")
@@ -288,7 +292,7 @@ def scale_text(figsize, text_size):
             return text_size
 
 
-def posteriorplot(trace, varnames=None, figsize=None, text_size=None,
+def posteriorplot(trace, varnames=None, tune=0, figsize=None, text_size=None,
                    alpha_level=0.05, round_to=3, point_estimate='mean', rope=None,
                    ref_val=None, kde_plot=False, bw=4.5, ax=None, **kwargs):
 
@@ -321,8 +325,9 @@ def posteriorplot(trace, varnames=None, figsize=None, text_size=None,
     elif np.ndim(rope) == 1:
         rope = [rope] * var_num
 
-    for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), varnames)):
-        tr_values = trace[:,:,idx].flatten()
+    # for idx, (a, v) in enumerate(zip(np.atleast_1d(ax), varnames)):
+    for idx, (a, v) in enumerate(zip(ax.flatten(), varnames)):
+        tr_values = trace[:,tune:,idx].flatten()
         plot_posterior_op(tr_values, ax=a, bw=bw, kde_plot=kde_plot,
                           point_estimate=point_estimate, round_to=round_to,
                           alpha_level=alpha_level, ref_val=ref_val[idx],

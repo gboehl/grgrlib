@@ -47,6 +47,8 @@ def create_filter(self, alpha = .2, scale_obs = .2):
     ukf.R 		= np.diag(sig_obs)**2
 
     CO          = self.SIG @ self.QQ(self.par)
+    # CO2         = self.sys[3] @ self.QQ(self.par)
+
     ukf.Q 		= CO @ CO.T
 
     self.ukf    = ukf
