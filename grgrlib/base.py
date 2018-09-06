@@ -10,8 +10,10 @@ from numba import njit
 import time
 from .pyzlb import boehlgorithm
 
+
 def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
+
 
 def sorter(x, y):
     out     = np.empty_like(x, dtype=bool)
@@ -22,9 +24,10 @@ def sorter(x, y):
     out[zero_x] = True
     return out
 
+
 def invertible_subm(A):
     """
-    For a m times n matrix A with n > m this function finds the m columns that are necessary to construct a nonsingular submatrix of A.
+    For an (m times n) matrix A with n > m this function finds the m columns that are necessary to construct a nonsingular submatrix of A.
     """
 
     q, r, p     = sl.qr(A, mode='economic', pivoting=True)
@@ -33,6 +36,7 @@ def invertible_subm(A):
     res[p[:A.shape[0]]]     = True
 
     return res
+
 
 @njit(cache=True)
 def subt(A, B):
@@ -187,8 +191,10 @@ def get_sys(self, par=None, care_for = None, info = False):
     bb1  = b2[:dim_x]
 
     if info == 1:
-        print('Creation of system matrices finished in %ss. Condition value is %s.' 
-              % (np.round(time.time() - st,3), (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4)))
+        # print('Creation of system matrices finished in %ss. Condition value is %s.' 
+              # % (np.round(time.time() - st,3), (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4)))
+        print('Creation of system matrices finished in %ss.'
+              % np.round(time.time() - st,3))
 
     var_str     = [ v.name for v in vv_v ]
     out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
@@ -205,9 +211,21 @@ def get_sys(self, par=None, care_for = None, info = False):
 
     self.hx     = self.ZZ(par)[:,~out_msk[-len(vv_v):]], self.DD(par).squeeze()
     self.obs_arg        = np.where(self.hx[0])[1]
-    # self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
+
+    N2  = N[~out_msk][:,~out_msk]
+    A2  = A[~out_msk][:,~out_msk]
+    J2  = J[:,~out_msk]
+    H4  = H3[~out_msk]
+
+    DD1     = H4 - A2[:,:dim_x] @ nl.inv(J2 @ A2[:,:dim_x]) @ J2 @ H4
+    DD2     = H4 - A2[:,:dim_x] @ nl.inv(J2 @ A2[:,:dim_x]) @ J2 @ H4
+    ## here should be a warning if len's are incopatible
+    exo     = np.where(fast0(DD1 - DD2, 1))[0][-len(self.shocks):]
+    self.DD     = DD1[exo]
+
     self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
-    self.sys 	= N[~out_msk][:,~out_msk], A[~out_msk][:,~out_msk], J[:,~out_msk], H3[~out_msk], cx[~out_msk], b2[~out_msk], x_bar
+    # self.SIG    = (BB.T @ self.DD)[~out_msk[-len(vv_v):]]
+    self.sys 	= N2, A2, J2, H4, cx[~out_msk], b2[~out_msk], x_bar
 
 
 def irfs(self, shocklist, wannasee = None):
@@ -268,6 +286,44 @@ def irfs(self, shocklist, wannasee = None):
 
     return X, self.vv[care_for], (Y, K, L)
 
+def simulate(self, EPS=None):
+
+    ## EPS: shock innovations of shape (T, n_eps)
+
+    if EPS is None:
+        EPS     = self.residuals
+
+    st_vec          = self.filtered_X[0]
+
+    X   = [st_vec]
+    K   = []
+    L   = []
+    superflag   = False
+
+
+    for eps in EPS:
+
+        st_vec, (l,k), flag     = boehlgorithm(self, st_vec, eps)
+
+        if flag: 
+            superflag   = True
+
+        X.append(st_vec)
+        K.append(k)
+        L.append(l)
+
+    X   = np.array(X)
+    K   = np.array(K)
+    L   = np.array(L)
+
+    self.simulated_X    = X
+    self.simulated_Z    = (self.hx[0] @ X.T).T + self.hx[1]
+
+    if superflag:
+        warnings.warn('Numerical errors in boehlgorithm, did not converge')
+
+    return X, self.simulated_Z
+
 
 from .plots import pplot 
 from .estimation import bayesian_estimation
@@ -276,6 +332,7 @@ from .filtering import run_filter
 
 pydsge.DSGE.DSGE.get_sys            = get_sys
 pydsge.DSGE.DSGE.irfs               = irfs
+pydsge.DSGE.DSGE.simulate           = simulate
 pydsge.DSGE.DSGE.create_filter      = create_filter
 pydsge.DSGE.DSGE.run_filter         = run_filter
 pydsge.DSGE.DSGE.bayesian_estimation    = bayesian_estimation

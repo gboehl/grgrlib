@@ -73,7 +73,8 @@ def run_filter(self, use_rts=False, info=False):
     self.filtered_X     = X1
     self.filtered_V     = X1[:,exo_args]
     self.ll             = ll
-    self.residuals      = Y[:,exo_args]
+    # self.residuals      = Y[:,exo_args]
+    self.residuals      = Y[:,exo_args] @ self.DD
 
     if info == 1:
         print('Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')

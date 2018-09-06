@@ -112,8 +112,6 @@ def create_LL(vals, l, k, s):
 @njit(cache=True)
 def LL_pp(l, k, s, v, eps, SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran):
 
-    # SS_mat, SS_term, SS_tran, LL_mat, LL_term, LL_tran  = precalc_mat
-
     dim_x   = SS_mat.shape[2]
 
     SS 	= SS_mat[l,k] @ v + SS_term[l,k] + SS_tran[l,k] @ eps
