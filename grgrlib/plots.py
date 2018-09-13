@@ -3,12 +3,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def pplot(X, labels, yscale=None, title='', style='-', savepath=None, Y=None):
+def pplot(X, labels=None, yscale=None, title='', style='-', savepath=None, Y=None):
 
     plt_no      = X.shape[1] // 4 + bool(X.shape[1]%4)
 
     if yscale is None:
         yscale  = np.arange(X.shape[0])
+
+    if labels is None:
+        labels  = np.arange(X.shape[1]) + 1
 
     axs     = []
     for i in range(plt_no):

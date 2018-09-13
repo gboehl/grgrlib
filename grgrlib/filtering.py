@@ -8,10 +8,8 @@ import pydsge
 def t_func(self, state, noise = None, return_k = False):
 
     if noise is not None:
-        newstate, (l,k), flag   = boehlgorithm(self, state, noise)
-    else:
-        zro     = np.zeros(self.SIG.shape[1])
-        newstate, (l,k), flag   = boehlgorithm(self, state, zro)
+        state   += self.SIG @ noise
+    newstate, (l,k), flag   = boehlgorithm(self, state)
 
     if return_k: 	return newstate, (l,k), flag
     else: 			return newstate
@@ -20,10 +18,10 @@ pydsge.DSGE.DSGE.t_func             = t_func
 
 def create_filter(self, alpha = .2, scale_obs = .2):
 
-    from filterpy.kalman import UnscentedKalmanFilter as UKF
+    from filterpy_dsge.kalman import UnscentedKalmanFilter as UKF
     # from filterpy.kalman import ReducedScaledSigmaPoints
     # from filterpy.kalman import MerweScaledSigmaPoints
-    from filterpy.kalman import SigmaPoints_ftl
+    from filterpy_dsge.kalman import SigmaPoints_ftl
 
     dim_v       = len(self.vv)
     beta_ukf 	= 2.
@@ -47,7 +45,6 @@ def create_filter(self, alpha = .2, scale_obs = .2):
     ukf.R 		= np.diag(sig_obs)**2
 
     CO          = self.SIG @ self.QQ(self.par)
-    # CO2         = self.sys[3] @ self.QQ(self.par)
 
     ukf.Q 		= CO @ CO.T
 
@@ -73,8 +70,8 @@ def run_filter(self, use_rts=False, info=False):
     self.filtered_X     = X1
     self.filtered_V     = X1[:,exo_args]
     self.ll             = ll
-    # self.residuals      = Y[:,exo_args]
-    self.residuals      = Y[:,exo_args] @ self.DD
+    self.residuals      = Y[:,exo_args]
+    # self.residuals      = Y
 
     if info == 1:
         print('Filtering done in '+str(np.round(time.time()-st,3))+'seconds.')

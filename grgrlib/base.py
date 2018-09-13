@@ -113,7 +113,6 @@ def get_sys(self, par=None, care_for = None, info = False):
 
     ## define transition shocks -> state
     D   = self.PSI(par)
-    H   = -D.copy()
 
     ## mask those vars that are either forward looking or part of the constraint
     in_x       = ~fast0(AA, 0) | ~fast0(b[:dim_v])
@@ -132,9 +131,6 @@ def get_sys(self, par=None, care_for = None, info = False):
     P       = np.block([[A1, -BB],
                         [np.zeros((dim_x,dim_x)), np.eye(dim_v)[in_x]]])
     
-    H1      = np.block([[H],
-                        [np.zeros((dim_x,H.shape[1]))]])
-
     c_arg       = list(vv_x2).index(self.const_var)
 
     ## c contains information on how the constraint var affects the system
@@ -153,7 +149,6 @@ def get_sys(self, par=None, care_for = None, info = False):
 
     P2  = np.diag(s) @ V
     M2  = U.T @ M1
-    H2  = U.T @ H1
 
     c1  = U.T @ c_M
 
@@ -173,7 +168,6 @@ def get_sys(self, par=None, care_for = None, info = False):
     ## create the stuff that the algorithm needs
     N       = nl.inv(P2) @ M2 
     A       = nl.inv(P2) @ (M2 + np.outer(c1,b2))
-    H3      = nl.inv(P2) @ H2
 
     if sum(eig(A).round(3) >= 1) - len(vv_x3):
         raise ValueError('BC *not* satisfied.')
@@ -191,8 +185,6 @@ def get_sys(self, par=None, care_for = None, info = False):
     bb1  = b2[:dim_x]
 
     if info == 1:
-        # print('Creation of system matrices finished in %ss. Condition value is %s.' 
-              # % (np.round(time.time() - st,3), (bb1 @ nl.inv(n1 - OME @ n3) @ (cc1 - OME @ cc2)).round(4)))
         print('Creation of system matrices finished in %ss.'
               % np.round(time.time() - st,3))
 
@@ -200,32 +192,23 @@ def get_sys(self, par=None, care_for = None, info = False):
     out_msk     = fast0(N, 0) & fast0(A, 0) & fast0(b2) & fast0(cx)
     out_msk[-len(vv_v):]    = out_msk[-len(vv_v):] & fast0(self.ZZ(par), 0)
 
-    B   = nl.inv(U @ P2) @ M1
-    H4          = H3[~out_msk]
-
     ## add everything to the DSGE object
     self.vv     = vv_v[~out_msk[-len(vv_v):]]
 
     self.observables    = self['observables']
     self.par    = par
 
-    self.hx     = self.ZZ(par)[:,~out_msk[-len(vv_v):]], self.DD(par).squeeze()
+    self.hx             = self.ZZ(par)[:,~out_msk[-len(vv_v):]], self.DD(par).squeeze()
     self.obs_arg        = np.where(self.hx[0])[1]
 
     N2  = N[~out_msk][:,~out_msk]
     A2  = A[~out_msk][:,~out_msk]
     J2  = J[:,~out_msk]
-    H4  = H3[~out_msk]
-
-    DD1     = H4 - A2[:,:dim_x] @ nl.inv(J2 @ A2[:,:dim_x]) @ J2 @ H4
-    DD2     = H4 - A2[:,:dim_x] @ nl.inv(J2 @ A2[:,:dim_x]) @ J2 @ H4
-    ## here should be a warning if len's are incopatible
-    exo     = np.where(fast0(DD1 - DD2, 1))[0][-len(self.shocks):]
-    self.DD     = DD1[exo]
 
     self.SIG    = (BB.T @ D)[~out_msk[-len(vv_v):]]
-    # self.SIG    = (BB.T @ self.DD)[~out_msk[-len(vv_v):]]
-    self.sys 	= N2, A2, J2, H4, cx[~out_msk], b2[~out_msk], x_bar
+
+    ## need to delete this zero, its just here cause I'm lazy
+    self.sys 	= N2, A2, J2, 0, cx[~out_msk], b2[~out_msk], x_bar
 
 
 def irfs(self, shocklist, wannasee = None):
@@ -264,7 +247,7 @@ def irfs(self, shocklist, wannasee = None):
                 for shk in shk_process:
                     args_see += list(shk)
                 
-        st_vec, (l,k), flag     = boehlgorithm(self, st_vec, shk_vec)
+        st_vec, (l,k), flag     = self.t_func(st_vec, shk_vec, True)
 
         if flag: 
             superflag   = True
@@ -286,16 +269,22 @@ def irfs(self, shocklist, wannasee = None):
 
     return X, self.vv[care_for], (Y, K, L)
 
-def simulate(self, EPS=None):
+
+def simulate(self, EPS=None, initial_state=None):
 
     ## EPS: shock innovations of shape (T, n_eps)
 
     if EPS is None:
         EPS     = self.residuals
 
-    st_vec          = self.filtered_X[0]
+    # st_vec          = np.zeros_like(self.filtered_X[0])
+    if initial_state is None:
+        st_vec          = np.zeros(len(self.vv))
+        X   = []
+    else:
+        st_vec          = initial_state
+        X   = [st_vec]
 
-    X   = [st_vec]
     K   = []
     L   = []
     superflag   = False
@@ -303,7 +292,7 @@ def simulate(self, EPS=None):
 
     for eps in EPS:
 
-        st_vec, (l,k), flag     = boehlgorithm(self, st_vec, eps)
+        st_vec, (l,k), flag     = self.t_func(st_vec, noise=eps, return_k=True)
 
         if flag: 
             superflag   = True
