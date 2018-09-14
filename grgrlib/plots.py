@@ -4,7 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def pplot(X, labels=None, yscale=None, title='', style='-', savepath=None, Y=None):
+def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax = None): 
 
     plt_no      = X.shape[1] // 4 + bool(X.shape[1]%4)
 
@@ -14,38 +14,46 @@ def pplot(X, labels=None, yscale=None, title='', style='-', savepath=None, Y=Non
     if labels is None:
         labels  = np.arange(X.shape[1]) + 1
 
-    axs     = []
-    for i in range(plt_no):
+    if ax is None:
+        ax      = []
+        for i in range(plt_no):
 
-        ax  = plt.subplots(2,2)[1].flatten()
+            axi     = plt.subplots(2,2)[1].flatten()
 
-        for j in range(4):
+            for j in range(4):
 
-            if 4*i+j >= X.shape[1]:
-                ax[j].set_visible(False)
+                if 4*i+j >= X.shape[1]:
+                    axi[j].set_visible(False)
 
-            else:
-                if X.shape[1] > 4*i+j:
-                    ax[j].plot(yscale, X[:,4*i+j], style, lw=2)
+                else:
+                    if X.shape[1] > 4*i+j:
+                        axi[j].plot(yscale, X[:,4*i+j], style, lw=2)
 
-                if Y is not None:
-                    if Y.shape[1] > 4*i+j:
-                        ax[j].plot(yscale, Y[:,4*i+j], style, lw=2)
+                    if Y is not None:
+                        if Y.shape[1] > 4*i+j:
+                            axi[j].plot(yscale, Y[:,4*i+j], style, lw=2)
 
-                ax[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
-                ax[j].spines['top'].set_visible(False)
-                ax[j].spines['right'].set_visible(False)
-                ax[j].set_xlabel(labels[4*i+j], fontsize=14)
+                    axi[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
+                    axi[j].spines['top'].set_visible(False)
+                    axi[j].spines['right'].set_visible(False)
+                    axi[j].set_xlabel(labels[4*i+j], fontsize=14)
 
-        if title:
-            plt.suptitle('%s %s' %(title,i+1), fontsize=16)
+            if title:
+                plt.suptitle('%s %s' %(title,i+1), fontsize=16)
 
-        plt.tight_layout()
+            plt.tight_layout()
+            ax.append(axi)
+    else:
+        for i, axi in enumerate(ax):
+            axi.plot(yscale, X[:,i], style, lw=2)
 
-        if savepath is not None:
-            plt.savefig(savepath+title+str(i+1)+'.pdf')
+            if Y is not None:
+                axi.plot(yscale, Y[:,i], style, lw=2)
 
-        axs.append(ax)
+            axi.tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
+            axi.spines['top'].set_visible(False)
+            axi.spines['right'].set_visible(False)
+            axi.set_xlabel(labels[i], fontsize=14)
 
-    return axs
+    return ax
 
