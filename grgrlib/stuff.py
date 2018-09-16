@@ -64,9 +64,9 @@ def re_bc(N, d_endo):
     return -nl.inv(Z21) @ Z22
 
 
-def fast0(A, mode=None):
+def fast0(A, mode=-1):
 
-    if mode == None:
+    if mode == -1:
         return np.isclose(A, 0)
     elif mode == 0:
         return np.isclose(A, 0).all(axis=0)
@@ -84,3 +84,23 @@ def nearestPSD(A):
 
     return (B + H)/2
 
+@njit(cache=True)
+def cholesky(A):
+    """
+       Performs a Cholesky decomposition of on symmetric, pos-def A.
+       Returns lower-triangular L (full sized, zeroed above diag)
+    """
+    n = A.shape[0]
+    L = np.zeros_like(A)
+
+    # Perform the Cholesky decomposition
+    for row in range(n):
+        for col in range(row+1):
+            tmp_sum = np.dot(L[row,:col], L[col,:col])         
+            if (row == col): # Diagonal elements
+                L[row, col] = np.sqrt(max(A[row,row] - tmp_sum, 0))
+            elif np.abs(L[col,col]) < 1e-5:
+                L[row,col] = 0
+            else:
+                L[row,col] = (1.0 / L[col,col]) * (A[row,col] - tmp_sum)
+    return L
