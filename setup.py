@@ -5,7 +5,7 @@ setup(
         version = 'alpha',
         author='Gregor Boehl',
         author_email='admin@gregorboehl.com',
-        description='Various insanly helpful functions',
+        description='Various insanely helpful functions',
         packages = find_packages(),
         install_requires=[
             'sympy',
