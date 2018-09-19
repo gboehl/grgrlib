@@ -15,10 +15,12 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax
         labels  = np.arange(X.shape[1]) + 1
 
     if ax is None:
-        ax      = []
+        axs      = []
+        figs     = []
         for i in range(plt_no):
 
-            axi     = plt.subplots(2,2)[1].flatten()
+            fig, axis     = plt.subplots(2,2)
+            axi     = axis.flatten()
 
             for j in range(4):
 
@@ -42,7 +44,10 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax
                 plt.suptitle('%s %s' %(title,i+1), fontsize=16)
 
             plt.tight_layout()
-            ax.append(axi)
+            axs.append(axi)
+            figs.append(fig)
+
+        return figs, axs
     else:
         for i, axi in enumerate(ax):
             axi.plot(yscale, X[:,i], style, lw=2)
@@ -54,6 +59,6 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax
             axi.spines['top'].set_visible(False)
             axi.spines['right'].set_visible(False)
             axi.set_xlabel(labels[i], fontsize=14)
+        return ax
 
-    return ax
 
