@@ -4,7 +4,20 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax = None): 
+def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax = None, alpha = 0.05): 
+
+    ndim_X_flag     = False
+    ndim_Y_flag     = False
+
+    if X.ndim > 2:
+        ndim_X_flag     = True
+        XI  = np.percentile(X, [alpha*100/2, (1 - alpha/2)*100], axis=0)
+        X   = np.median(X, axis=0)
+
+    if Y.ndim > 2:
+        ndim_Y_flag     = True
+        YI  = np.percentile(Y, [alpha*100/2, (1 - alpha/2)*100], axis=0)
+        Y   = np.median(Y, axis=0)
 
     plt_no      = X.shape[1] // 4 + bool(X.shape[1]%4)
 
@@ -30,10 +43,14 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax
                 else:
                     if X.shape[1] > 4*i+j:
                         axi[j].plot(yscale, X[:,4*i+j], style, lw=2)
+                        if ndim_X_flag:
+                            axi[j].fill_between(yscale, *XI[:,:,4*i+j], lw=0, alpha=.5, color='C0')
 
                     if Y is not None:
                         if Y.shape[1] > 4*i+j:
                             axi[j].plot(yscale, Y[:,4*i+j], style, lw=2)
+                            if ndim_Y_flag:
+                                axi[j].fill_between(yscale, *YI[:,:,4*i+j], lw=0, alpha=.5, color='C1')
 
                     axi[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
                     axi[j].spines['top'].set_visible(False)
