@@ -44,13 +44,13 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax
                     if X.shape[1] > 4*i+j:
                         axi[j].plot(yscale, X[:,4*i+j], style, lw=2)
                         if ndim_X_flag:
-                            axi[j].fill_between(yscale, *XI[:,:,4*i+j], lw=0, alpha=.5, color='C0')
+                            axi[j].fill_between(yscale, *XI[:,:,4*i+j], lw=0, alpha=.4, color='C0')
 
                     if Y is not None:
                         if Y.shape[1] > 4*i+j:
                             axi[j].plot(yscale, Y[:,4*i+j], style, lw=2)
                             if ndim_Y_flag:
-                                axi[j].fill_between(yscale, *YI[:,:,4*i+j], lw=0, alpha=.5, color='C1')
+                                axi[j].fill_between(yscale, *YI[:,:,4*i+j], lw=0, alpha=.4, color='C1')
 
                     axi[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
                     axi[j].spines['top'].set_visible(False)
