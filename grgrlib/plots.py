@@ -14,7 +14,7 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax
         XI  = np.percentile(X, [alpha*100/2, (1 - alpha/2)*100], axis=0)
         X   = np.median(X, axis=0)
 
-    if Y.ndim > 2:
+    if Y is not None and Y.ndim > 2:
         ndim_Y_flag     = True
         YI  = np.percentile(Y, [alpha*100/2, (1 - alpha/2)*100], axis=0)
         Y   = np.median(Y, axis=0)
