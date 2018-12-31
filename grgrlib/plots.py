@@ -4,10 +4,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax = None, sigma = 0.05, alpha = 0.3): 
+def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = None, Y = None, ax = None, sigma = 0.05, alpha = 0.3): 
 
     ndim_X_flag     = False
     ndim_Y_flag     = False
+
+    if y_style is None:
+        y_style = style
 
     if X.ndim > 2:
         ndim_X_flag     = True
@@ -57,12 +60,12 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', Y = None, ax
                         if Y.shape[-1] > 4*i+j:
                             if ndim_Y_flag:
                                 if style is not '.':
-                                    axi[j].plot(yscale, Y[:,4*i+j], style, lw=2)
+                                    axi[j].plot(yscale, Y[:,4*i+j], y_style, lw=2)
                                     axi[j].fill_between(yscale, *YI[:,:,4*i+j], lw=0, alpha=alpha, color='C1')
                                 else:
                                     axi[j].plot(yscale, Y[:,:,4*i+j].swapaxes(0,1), style, lw=2, alpha=alpha)
                             else:
-                                axi[j].plot(yscale, Y[:,4*i+j], style, lw=2)
+                                axi[j].plot(yscale, Y[:,4*i+j], y_style, lw=2)
 
                     axi[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
                     axi[j].spines['top'].set_visible(False)
