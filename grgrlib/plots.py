@@ -4,7 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = None, Y = None, ax = None, sigma = 0.05, alpha = 0.3): 
+def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = None, Y = None, ax = None, figsize = None, sigma = 0.05, alpha = 0.3): 
 
     ndim_X_flag     = False
     ndim_Y_flag     = False
@@ -24,7 +24,9 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = No
         if style is not '.':
             Y  = np.median(Y, axis=0)
 
-    plt_no      = X.shape[-1] // 4 + bool(X.shape[-1]%4)
+    rest        = X.shape[-1]%4
+    plt_no      = X.shape[-1] // 4 + bool(rest)
+
 
     if yscale is None:
         yscale  = np.arange(X.shape[-2])
@@ -33,14 +35,21 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = No
         labels  = np.arange(X.shape[1]) + 1
 
     if ax is None:
-        axs      = []
-        figs     = []
+        axs     = []
+        figs    = []
+        lin_no  = 2
         for i in range(plt_no):
 
-            fig, axis     = plt.subplots(2,2)
+            if 4*(i+1) - X.shape[-1] > 1:
+                lin_no  -= 1
+
+            if figsize is None:
+                figsize_loc     = (8, lin_no*3)
+
+            fig, axis     = plt.subplots(lin_no,2, figsize=figsize_loc)
             axi     = axis.flatten()
 
-            for j in range(4):
+            for j in range(lin_no*2):
 
                 if 4*i+j >= X.shape[-1]:
                     axi[j].set_visible(False)
