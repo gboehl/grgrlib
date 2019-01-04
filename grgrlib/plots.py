@@ -4,7 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = None, Y = None, ax = None, figsize = None, sigma = 0.05, alpha = 0.3): 
+def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = None, Y = None, ax = None, figsize = None, sigma = 0.05, alpha = 0.3, use_mean=False): 
 
     ndim_X_flag     = False
     ndim_Y_flag     = False
@@ -16,13 +16,19 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = No
         ndim_X_flag     = True
         XI  = np.percentile(X, [sigma*100/2, (1 - sigma/2)*100], axis=0)
         if style is not '.':
-            X   = np.median(X, axis=0)
+            if use_mean:
+                X   = np.mean(X, axis=0)
+            else:
+                X   = np.median(X, axis=0)
 
     if Y is not None and Y.ndim > 2:
         ndim_Y_flag     = True
         YI  = np.percentile(Y, [sigma*100/2, (1 - sigma/2)*100], axis=0)
         if style is not '.':
-            Y  = np.median(Y, axis=0)
+            if use_mean:
+                Y  = np.mean(Y, axis=0)
+            else:
+                Y  = np.median(Y, axis=0)
 
     rest        = X.shape[-1]%4
     plt_no      = X.shape[-1] // 4 + bool(rest)
