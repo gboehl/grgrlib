@@ -82,9 +82,9 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = No
                             else:
                                 axi[j].plot(yscale, Y[:,4*i+j], y_style, lw=2)
 
-                    axi[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
-                    axi[j].spines['top'].set_visible(False)
-                    axi[j].spines['right'].set_visible(False)
+                    # axi[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
+                    # axi[j].spines['top'].set_visible(False)
+                    # axi[j].spines['right'].set_visible(False)
                     if len(labels) > 4*i+j:
                         axi[j].set_xlabel(labels[4*i+j], fontsize=14)
 
@@ -106,9 +106,9 @@ def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = No
             if Y is not None:
                 axi.plot(yscale, Y[:,i], style, lw=2)
 
-            axi.tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
-            axi.spines['top'].set_visible(False)
-            axi.spines['right'].set_visible(False)
+            # axi.tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
+            # axi.spines['top'].set_visible(False)
+            # axi.spines['right'].set_visible(False)
             axi.set_xlabel(labels[i], fontsize=14)
         return ax
 
