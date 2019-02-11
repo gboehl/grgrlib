@@ -83,7 +83,36 @@ def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None
                 if 4*i+j >= no_states:
                     ax_flat[j].set_visible(False)
                 else:
+<<<<<<< HEAD
                     ax.append(ax_flat[j])
+=======
+                    if X.shape[-1] > 4*i+j:
+                        if ndim_X_flag: 
+                            if style is not '.':
+                                axi[j].plot(yscale, X[:,4*i+j], style, lw=2)
+                                axi[j].fill_between(yscale, *XI[:,:,4*i+j], lw=0, alpha=alpha, color='C0')
+                            else:
+                                axi[j].plot(yscale, X[:,:,4*i+j].swapaxes(0,1), style, lw=2, alpha=alpha)
+                        else:
+                            axi[j].plot(yscale, X[:,4*i+j], style, lw=2)
+
+                    if Y is not None:
+                        if Y.shape[-1] > 4*i+j:
+                            if ndim_Y_flag:
+                                if style is not '.':
+                                    axi[j].plot(yscale, Y[:,4*i+j], y_style, lw=2)
+                                    axi[j].fill_between(yscale, *YI[:,:,4*i+j], lw=0, alpha=alpha, color='C1')
+                                else:
+                                    axi[j].plot(yscale, Y[:,:,4*i+j].swapaxes(0,1), style, lw=2, alpha=alpha)
+                            else:
+                                axi[j].plot(yscale, Y[:,4*i+j], y_style, lw=2)
+
+                    # axi[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
+                    # axi[j].spines['top'].set_visible(False)
+                    # axi[j].spines['right'].set_visible(False)
+                    if len(labels) > 4*i+j:
+                        axi[j].set_xlabel(labels[4*i+j], fontsize=14)
+>>>>>>> fa500d73aefdfe12d3734b863d80dc4d0bfb52d3
 
             if title:
                 if plt_no > 1:
@@ -114,7 +143,15 @@ def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None
             ax[i].tick_params(axis='both', which='both',
                               top=False, right=False, labelsize=12)
 
+<<<<<<< HEAD
             ax[i].set_xlabel(labels[selector][i], fontsize=14)
+=======
+            # axi.tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
+            # axi.spines['top'].set_visible(False)
+            # axi.spines['right'].set_visible(False)
+            axi.set_xlabel(labels[i], fontsize=14)
+        return ax
+>>>>>>> fa500d73aefdfe12d3734b863d80dc4d0bfb52d3
 
     for fig in figs:
         fig.tight_layout()
