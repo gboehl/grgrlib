@@ -19,7 +19,9 @@ def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None
                            X[0].shape[-2]*yscale[1], yscale[1])
 
     if labels is None:
-        labels = np.arange(X[0].shape[1]) + 1
+        labels  = np.arange(X[0].shape[1]) + 1
+    else:
+        labels  = np.array(labels)
 
     # yet we can not be sure about the number of dimensions
     selector = np.zeros(X[0].shape[-1], dtype=bool)
