@@ -3,113 +3,120 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+from .stuff import fast0
 
-def pplot(X, yscale = None, labels = None, title = '', style = '-', y_style = None, Y = None, ax = None, figsize = None, sigma = 0.05, alpha = 0.3, use_mean=False): 
 
-    ndim_X_flag     = False
-    ndim_Y_flag     = False
+def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None, figsize=None, sigma=0.05, alpha=0.3):
 
-    if y_style is None:
-        y_style = style
-
-    if X.ndim > 2:
-        ndim_X_flag     = True
-        XI  = np.percentile(X, [sigma*100/2, (1 - sigma/2)*100], axis=0)
-        if style is not '.':
-            if use_mean:
-                X   = np.mean(X, axis=0)
-            else:
-                X   = np.median(X, axis=0)
-
-    if Y is not None and Y.ndim > 2:
-        ndim_Y_flag     = True
-        YI  = np.percentile(Y, [sigma*100/2, (1 - sigma/2)*100], axis=0)
-        if style is not '.':
-            if use_mean:
-                Y  = np.mean(Y, axis=0)
-            else:
-                Y  = np.median(Y, axis=0)
-
-    rest        = X.shape[-1]%4
-    plt_no      = X.shape[-1] // 4 + bool(rest)
-
+    if not isinstance(X, tuple):
+        # make it a tuple
+        X = X,
 
     if yscale is None:
-        yscale  = np.arange(X.shape[-2])
+        yscale  = np.arange(X[0].shape[-2])
+    elif isinstance(yscale, tuple):
+        yscale  = np.arange(yscale[0], yscale[0] + X[0].shape[-2]*yscale[1], yscale[1])
 
     if labels is None:
-        labels  = np.arange(X.shape[1]) + 1
+        labels = np.arange(X[0].shape[1]) + 1
 
+    # yet we can not be sure about the number of dimensions
+    selector = np.zeros(X[0].shape[-1], dtype=bool)
+
+    X_list = []
+    for x in X:
+        # X.shape[0] is the number of time series
+        # X.shape[1] is the len of the x axis (e.g. time)
+        # X.shape[2] is the no of different objects (e.g. states)
+        if x.ndim == 2:
+            # be sure that X has 3 dimensions
+            x = x.reshape(1, *x.shape)
+
+        line = None
+        interval = None
+
+        if x.shape[0] == 1:
+            line = x[0]
+        if x.shape[0] == 2:
+            interval = x
+        if x.shape[0] == 3:
+            line = x[1]
+            interval = x[[0, 2]]
+        if x.shape[0] > 3:
+            interval = np.percentile(
+                x, [sigma*100/2, (1 - sigma/2)*100], axis=0)
+            line = np.median(x, axis=0)
+
+        # check if there are states that are always zero
+        if line is not None:
+            selector += ~fast0(line, 0)
+        if interval is not None:
+            selector += ~fast0(interval[0], 0)
+            selector += ~fast0(interval[1], 0)
+
+        X_list.append((line, interval))
+
+    no_states = sum(selector)
+
+    # first create axes as an iterateble if it does not exist
     if ax is None:
-        axs     = []
-        figs    = []
-        lin_no  = 2
+        ax = []
+        figs = []
+        rest = no_states % 4
+        plt_no = no_states // 4 + bool(rest)
+        # assume we want to have two rows per plot
+        no_rows = 2
         for i in range(plt_no):
 
-            if 4*(i+1) - X.shape[-1] > 1:
-                lin_no  -= 1
+            if 4*(i+1) - no_states > 1:
+                no_rows -= 1
 
             if figsize is None:
-                figsize_loc     = (8, lin_no*3)
+                figsize_loc = (8, no_rows*3)
 
-            fig, axis     = plt.subplots(lin_no,2, figsize=figsize_loc)
-            axi     = axis.flatten()
+            fig, ax_of4 = plt.subplots(no_rows, 2, figsize=figsize_loc)
+            ax_flat = ax_of4.flatten()
 
-            for j in range(lin_no*2):
+            # assume we also want two cols per plot
+            for j in range(no_rows*2):
 
-                if 4*i+j >= X.shape[-1]:
-                    axi[j].set_visible(False)
-
+                if 4*i+j >= no_states:
+                    ax_flat[j].set_visible(False)
                 else:
-                    if X.shape[-1] > 4*i+j:
-                        if ndim_X_flag: 
-                            if style is not '.':
-                                axi[j].plot(yscale, X[:,4*i+j], style, lw=2)
-                                axi[j].fill_between(yscale, *XI[:,:,4*i+j], lw=0, alpha=alpha, color='C0')
-                            else:
-                                axi[j].plot(yscale, X[:,:,4*i+j].swapaxes(0,1), style, lw=2, alpha=alpha)
-                        else:
-                            axi[j].plot(yscale, X[:,4*i+j], style, lw=2)
-
-                    if Y is not None:
-                        if Y.shape[-1] > 4*i+j:
-                            if ndim_Y_flag:
-                                if style is not '.':
-                                    axi[j].plot(yscale, Y[:,4*i+j], y_style, lw=2)
-                                    axi[j].fill_between(yscale, *YI[:,:,4*i+j], lw=0, alpha=alpha, color='C1')
-                                else:
-                                    axi[j].plot(yscale, Y[:,:,4*i+j].swapaxes(0,1), style, lw=2, alpha=alpha)
-                            else:
-                                axi[j].plot(yscale, Y[:,4*i+j], y_style, lw=2)
-
-                    axi[j].tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
-                    axi[j].spines['top'].set_visible(False)
-                    axi[j].spines['right'].set_visible(False)
-                    if len(labels) > 4*i+j:
-                        axi[j].set_xlabel(labels[4*i+j], fontsize=14)
+                    ax.append(ax_flat[j])
 
             if title:
-                if not plt_no-1:
-                    plt.suptitle('%s' %(title), fontsize=16)
+                if plt_no > 1:
+                    plt.suptitle('%s %s' % (title, i+1), fontsize=16)
                 else:
-                    plt.suptitle('%s %s' %(title,i+1), fontsize=16)
-
-            plt.tight_layout()
-            axs.append(axi)
+                    plt.suptitle('%s' % (title), fontsize=16)
             figs.append(fig)
-
-        return figs, axs
     else:
-        for i, axi in enumerate(ax):
-            axi.plot(yscale, X[:,i], style, lw=2)
+        figs = None
 
-            if Y is not None:
-                axi.plot(yscale, Y[:,i], style, lw=2)
+    for obj_no, obj in enumerate(X_list):
 
-            axi.tick_params(axis='both', which='both', top=False, right=False, labelsize=12)
-            axi.spines['top'].set_visible(False)
-            axi.spines['right'].set_visible(False)
-            axi.set_xlabel(labels[i], fontsize=14)
-        return ax
+        if legend is not None:
+            legend_tag  = legend[obj_no]
+        else:
+            legend_tag   = None
 
+        line, interval = obj
+        # ax is a list of all the subplots
+        for i in range(no_states):
 
+            if line is not None:
+                ax[i].plot(yscale, line[:, selector][:, i], style, lw=2, label=legend_tag)
+            if interval is not None:
+                ax[i].fill_between(
+                    yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha, label=legend_tag)
+
+            ax[i].tick_params(axis='both', which='both',
+                              top=False, right=False, labelsize=12)
+
+            ax[i].set_xlabel(labels[selector][i], fontsize=14)
+
+    for fig in figs:
+        fig.tight_layout()
+
+    return figs, ax
