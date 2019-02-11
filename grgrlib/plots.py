@@ -13,9 +13,10 @@ def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None
         X = X,
 
     if yscale is None:
-        yscale  = np.arange(X[0].shape[-2])
+        yscale = np.arange(X[0].shape[-2])
     elif isinstance(yscale, tuple):
-        yscale  = np.arange(yscale[0], yscale[0] + X[0].shape[-2]*yscale[1], yscale[1])
+        yscale = np.arange(yscale[0], yscale[0] +
+                           X[0].shape[-2]*yscale[1], yscale[1])
 
     if labels is None:
         labels = np.arange(X[0].shape[1]) + 1
@@ -92,21 +93,23 @@ def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None
                     plt.suptitle('%s' % (title), fontsize=16)
             figs.append(fig)
     else:
+        [ axis.set_prop_cycle(None) for axis in ax ]
         figs = None
 
     for obj_no, obj in enumerate(X_list):
 
         if legend is not None:
-            legend_tag  = legend[obj_no]
+            legend_tag = legend[obj_no]
         else:
-            legend_tag   = None
+            legend_tag = None
 
         line, interval = obj
         # ax is a list of all the subplots
         for i in range(no_states):
 
             if line is not None:
-                ax[i].plot(yscale, line[:, selector][:, i], style, lw=2, label=legend_tag)
+                ax[i].plot(yscale, line[:, selector][:, i],
+                           style, lw=2, label=legend_tag)
             if interval is not None:
                 ax[i].fill_between(
                     yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha, label=legend_tag)
@@ -116,7 +119,7 @@ def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None
 
             ax[i].set_xlabel(labels[selector][i], fontsize=14)
 
-    for fig in figs:
-        fig.tight_layout()
+    if figs is not None:
+        [fig.tight_layout() for fig in figs]
 
     return figs, ax
