@@ -19,7 +19,10 @@ def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None
                            X[0].shape[-2]*yscale[1], yscale[1])
 
     if labels is None:
-        labels  = np.arange(X[0].shape[1]) + 1
+        if X[0].shape[-1] > 1:
+            labels  = np.arange(X[0].shape[-1]) + 1
+        else:
+            labels  = np.array([None])
     else:
         labels  = np.array(labels)
 
@@ -67,21 +70,23 @@ def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None
         figs = []
         rest = no_states % 4
         plt_no = no_states // 4 + bool(rest)
-        # assume we want to have two rows per plot
+
+        # assume we want to have two rows and cols per plot
         no_rows = 2
+        no_cols = 2
         for i in range(plt_no):
 
-            if 4*(i+1) - no_states > 1:
-                no_rows -= 1
+            no_rows -= 4*(i+1) - no_states > 1
+            no_cols -= 4*(i+1) - no_states > 2
 
             if figsize is None:
-                figsize_loc = (8, no_rows*3)
+                figsize_loc = (no_cols*4, no_rows*3)
 
-            fig, ax_of4 = plt.subplots(no_rows, 2, figsize=figsize_loc)
-            ax_flat = ax_of4.flatten()
+            fig, ax_of4 = plt.subplots(no_rows, no_cols, figsize=figsize_loc)
+            ax_flat = np.array(ax_of4).flatten()
 
             # assume we also want two cols per plot
-            for j in range(no_rows*2):
+            for j in range(no_rows*no_cols):
 
                 if 4*i+j >= no_states:
                     ax_flat[j].set_visible(False)
