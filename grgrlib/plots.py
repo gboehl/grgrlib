@@ -6,7 +6,8 @@ import numpy as np
 from .stuff import fast0
 
 
-def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None, figsize=None, sigma=0.05, alpha=0.3):
+def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=None, figsize=None, sigma=0.05, alpha=0.3):
+
 
     if not isinstance(X, tuple):
         # make it a tuple
@@ -17,6 +18,12 @@ def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None
     elif isinstance(yscale, tuple):
         yscale = np.arange(yscale[0], yscale[0] +
                            X[0].shape[-2]*yscale[1], yscale[1])
+
+    if style is None:
+        style = '-'
+
+    if not isinstance(style, tuple):
+        style = np.repeat(style, len(X))
 
     if labels is None:
         if X[0].shape[-1] > 1:
@@ -116,10 +123,10 @@ def pplot(X, yscale=None, labels=None, title='', style='-', legend=None, ax=None
 
             if line is not None:
                 ax[i].plot(yscale, line[:, selector][:, i],
-                           style, lw=2, label=legend_tag)
+                           style[obj_no], lw=2, label=legend_tag)
             if interval is not None:
                 ax[i].fill_between(
-                    yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha, label=legend_tag)
+                    yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha, label=(line is None)*[legend_tag])
 
             ax[i].tick_params(axis='both', which='both',
                               top=False, right=False, labelsize=12)
