@@ -8,7 +8,6 @@ from .stuff import fast0
 
 def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=None, figsize=None, sigma=0.05, alpha=0.3):
 
-
     if not isinstance(X, tuple):
         # make it a tuple
         X = X,
@@ -27,11 +26,11 @@ def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=Non
 
     if labels is None:
         if X[0].shape[-1] > 1:
-            labels  = np.arange(X[0].shape[-1]) + 1
+            labels = np.arange(X[0].shape[-1]) + 1
         else:
-            labels  = np.array([None])
+            labels = np.array([None])
     else:
-        labels  = np.array(labels)
+        labels = np.array(labels)
 
     # yet we can not be sure about the number of dimensions
     selector = np.zeros(X[0].shape[-1], dtype=bool)
@@ -107,7 +106,7 @@ def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=Non
                     plt.suptitle('%s' % (title), fontsize=16)
             figs.append(fig)
     else:
-        [ axis.set_prop_cycle(None) for axis in ax ]
+        [axis.set_prop_cycle(None) for axis in ax]
         figs = None
 
     for obj_no, obj in enumerate(X_list):
@@ -126,11 +125,9 @@ def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=Non
                            style[obj_no], lw=2, label=legend_tag)
             if interval is not None:
                 ax[i].fill_between(
-                    yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha, label=(line is None)*[legend_tag])
-
+                    yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha, label=legend_tag if line is None else None)
             ax[i].tick_params(axis='both', which='both',
                               top=False, right=False, labelsize=12)
-
             ax[i].set_xlabel(labels[selector][i], fontsize=14)
 
     if figs is not None:
