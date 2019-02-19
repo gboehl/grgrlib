@@ -3,10 +3,11 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import MaxNLocator
 from .stuff import fast0
 
 
-def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=None, figsize=None, sigma=0.05, alpha=0.3):
+def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3):
 
     if not isinstance(X, tuple):
         # make it a tuple
@@ -18,12 +19,6 @@ def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=Non
         yscale = np.arange(yscale[0], yscale[0] +
                            X[0].shape[-2]*yscale[1], yscale[1])
 
-    if style is None:
-        style = '-'
-
-    if not isinstance(style, tuple):
-        style = np.repeat(style, len(X))
-
     if labels is None:
         if X[0].shape[-1] > 1:
             labels = np.arange(X[0].shape[-1]) + 1
@@ -31,6 +26,15 @@ def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=Non
             labels = np.array([None])
     else:
         labels = np.array(labels)
+
+    if style is None:
+        style = '-'
+
+    if not isinstance(style, tuple):
+        style = np.repeat(style, len(X))
+
+    if nlocbins is None:
+        nlocbins = 'auto'
 
     # yet we can not be sure about the number of dimensions
     selector = np.zeros(X[0].shape[-1], dtype=bool)
@@ -109,6 +113,8 @@ def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=Non
         [axis.set_prop_cycle(None) for axis in ax]
         figs = None
 
+    locator = MaxNLocator(nbins=nlocbins, steps=[1, 2, 4, 8, 10])
+
     for obj_no, obj in enumerate(X_list):
 
         if legend is not None:
@@ -129,6 +135,7 @@ def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=Non
             ax[i].tick_params(axis='both', which='both',
                               top=False, right=False, labelsize=12)
             ax[i].set_xlabel(labels[selector][i], fontsize=14)
+            ax[i].xaxis.set_major_locator(locator)
 
     if figs is not None:
         [fig.tight_layout() for fig in figs]
