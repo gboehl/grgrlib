@@ -7,7 +7,7 @@ from matplotlib.ticker import MaxNLocator
 from .stuff import fast0
 
 
-def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3):
+def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3):
 
     if not isinstance(X, tuple):
         # make it a tuple
@@ -141,3 +141,5 @@ def pplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=Non
         [fig.tight_layout() for fig in figs]
 
     return figs, ax
+
+pplot   = grplot
