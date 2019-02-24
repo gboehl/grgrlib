@@ -56,7 +56,6 @@ def re_bc(N, d_endo):
     MM, PP, alp, bet, Q, Z = sl.ordqz(N, np.eye(n), sort=iuc)
 
     if not fast0(Q @ MM @ Z.T - N, 2):
-        # warnings.warn('Numerical errors in QZ')
         raise ValueError('Numerical errors in QZ')
 
     Z21 = Z.T[-d_endo:, :d_endo]
