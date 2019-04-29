@@ -7,7 +7,7 @@ from matplotlib.ticker import MaxNLocator
 from .stuff import fast0
 
 
-def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3):
+def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_plot=False, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3):
 
     if not isinstance(X, tuple):
         # make it a tuple
@@ -58,6 +58,7 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=No
 
         line = None
         interval = None
+        bulk = None
 
         if x.shape[0] == 1:
             line = x[0]
@@ -67,9 +68,12 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=No
             line = x[1]
             interval = x[[0, 2]]
         if x.shape[0] > 3:
-            interval = np.percentile(
-                x, [sigma*100/2, (1 - sigma/2)*100], axis=0)
-            line = np.median(x, axis=0)
+            if not bulk_plot:
+                interval = np.percentile(
+                    x, [sigma*100/2, (1 - sigma/2)*100], axis=0)
+                line = np.median(x, axis=0)
+            else:
+                bulk = x
 
         # check if there are states that are always zero
         if line is not None:
@@ -77,8 +81,10 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=No
         if interval is not None:
             selector += ~fast0(interval[0], 0)
             selector += ~fast0(interval[1], 0)
+        if bulk is not None:
+            selector[:] = 1
 
-        X_list.append((line, interval))
+        X_list.append((line, interval, bulk))
 
     no_states = sum(selector)
 
@@ -130,7 +136,7 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=No
         else:
             legend_tag = None
 
-        line, interval = obj
+        line, interval, bulk = obj
         # ax is a list of all the subplots
         for i in range(no_states):
 
@@ -140,6 +146,8 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, ax=No
             if interval is not None:
                 ax[i].fill_between(
                     yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha, label=legend_tag if line is None else None)
+            elif bulk is not None:
+                ax[i].plot(yscale, bulk[..., i].swapaxes(0,1), c='maroon', alpha=.04)
             ax[i].tick_params(axis='both', which='both',
                               top=False, right=False, labelsize=12)
             ax[i].set_xlabel(labels[selector][i], fontsize=14)
