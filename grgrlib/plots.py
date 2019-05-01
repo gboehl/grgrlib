@@ -147,7 +147,11 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
                 ax[i].fill_between(
                     yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha, label=legend_tag if line is None else None)
             elif bulk is not None:
-                ax[i].plot(yscale, bulk[..., i].swapaxes(0,1), c='maroon', alpha=.04)
+                if len(X_list) > 1:
+                    color = 'C'+str(obj_no)
+                else:
+                    color = 'maroon'
+                ax[i].plot(yscale, bulk[..., i].swapaxes(0,1), c=color, alpha=.04)
             ax[i].tick_params(axis='both', which='both',
                               top=False, right=False, labelsize=12)
             ax[i].set_xlabel(labels[selector][i], fontsize=14)
