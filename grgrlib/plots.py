@@ -104,9 +104,11 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
             no_cols -= 4*(i+1) - no_states > 2
 
             if figsize is None:
-                figsize = (no_cols*4, no_rows*3)
+                figsize_loc = (no_cols*4, no_rows*3)
+            else:
+                figsize_loc = figsize
 
-            fig, ax_of4 = plt.subplots(no_rows, no_cols, figsize=figsize)
+            fig, ax_of4 = plt.subplots(no_rows, no_cols, figsize=figsize_loc)
             ax_flat = np.array(ax_of4).flatten()
 
             # assume we also want two cols per plot
