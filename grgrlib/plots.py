@@ -121,9 +121,9 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
 
             if title:
                 if plt_no > 1:
-                    plt.suptitle('%s %s' % (title, i+1), fontsize=16)
+                    plt.suptitle('%s %s' % (title, i+1))
                 else:
-                    plt.suptitle('%s' % (title), fontsize=16)
+                    plt.suptitle('%s' % (title))
             figs.append(fig)
     else:
         [axis.set_prop_cycle(None) for axis in ax]
@@ -153,10 +153,11 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
                     color = 'C'+str(obj_no)
                 else:
                     color = 'maroon'
-                ax[i].plot(yscale, bulk[..., i].swapaxes(0,1), c=color, alpha=.04)
+                ax[i].plot(yscale, bulk[..., i].swapaxes(
+                    0, 1), c=color, alpha=.04)
             ax[i].tick_params(axis='both', which='both',
-                              top=False, right=False, labelsize=12)
-            ax[i].set_xlabel(labels[selector][i], fontsize=14)
+                              top=False, right=False)
+            ax[i].set_xlabel(labels[selector][i])
             ax[i].xaxis.set_major_locator(locator)
 
     if figs is not None:
@@ -164,4 +165,5 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
 
     return figs, ax
 
-pplot   = grplot
+
+pplot = grplot
