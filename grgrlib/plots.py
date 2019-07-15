@@ -1,4 +1,4 @@
-#!/bin/python2
+#!/bin/python
 # -*- coding: utf-8 -*-
 
 import matplotlib.pyplot as plt
@@ -165,5 +165,36 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
 
     return figs, ax
 
+
+def bifplot(y, X=None, plot_dots=None, ax=None, color='k', ylabel=None, xlabel=None):
+
+    if X is None:
+        X = y
+        y = np.arange(y.shape[0])
+
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = None
+
+    if plot_dots is None:
+        if X.shape[0] > 50:
+            plot_dots = False
+        else:
+            plot_dots = True
+
+    if not plot_dots:
+        ax.plot(y, X, '.', color=color, markersize=0.01)
+    else:
+        ax.plot(y, X, 'o', color=color)
+
+    ax.set_xlim(np.min(y),np.max(y))
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+
+    if fig is not None:
+        fig.tight_layout()
+
+    return fig, ax
 
 pplot = grplot
