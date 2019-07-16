@@ -167,6 +167,10 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
 
 
 def bifplot(y, X=None, plot_dots=None, ax=None, color='k', ylabel=None, xlabel=None):
+    """A bifurcation diagram
+
+    (add further documentation)
+    """
 
     if X is None:
         X = y
@@ -188,7 +192,7 @@ def bifplot(y, X=None, plot_dots=None, ax=None, color='k', ylabel=None, xlabel=N
     else:
         ax.plot(y, X, 'o', color=color)
 
-    ax.set_xlim(np.min(y),np.max(y))
+    ax.set_xlim(np.min(y), np.max(y))
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
 
@@ -196,5 +200,43 @@ def bifplot(y, X=None, plot_dots=None, ax=None, color='k', ylabel=None, xlabel=N
         fig.tight_layout()
 
     return fig, ax
+
+
+def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None):
+    """Simple interface to a heatmap (uses matplotlib's `imshow`).
+
+    Parameters
+    ----------
+    X : numpy.array
+        a matrix-like object 
+    gridbounds : float or tuple
+        the bounds of the grid. If a float, -/+ this value is taken as the bounds
+    xlabel : str (optional)
+    ylabel : str (optional)
+    zlabel : str (optional)
+    """
+
+    fig, ax = plt.subplots()
+
+    if isinstance(gridbounds, tuple):
+        if isinstance(gridbounds[0], tuple):
+            extent = [*gridbounds[0], *gridbounds[1], ]
+        else:
+            extent = [-gridbounds[0], gridbounds[0], -
+                      gridbounds[1], gridbounds[1], ]
+    else:
+        extent = [-gridbounds, gridbounds, -gridbounds, gridbounds, ]
+
+    plt.imshow(X, cmap="hot", extent=extent, vmin=np.nanmin(
+        X), vmax=np.nanmax(X), norm=SymLogNorm(1, linscale=1))
+
+    clb = plt.colorbar()
+
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(False)
+    clb.set_label(zlabel)
+
+    plt.tight_layout()
 
 pplot = grplot

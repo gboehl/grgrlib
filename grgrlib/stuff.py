@@ -26,15 +26,6 @@ def invertible_subm(A):
     return res
 
 
-@njit(cache=True)
-def subt(A, B):
-    res = A
-    for i in range(len(A)):
-        for j in range(len(A)):
-            res[i][j] = A[i][j] - B[i][j]
-    return res
-
-
 def nul(n):
     return np.zeros((n, n))
 
@@ -84,6 +75,79 @@ def nearestPSD(A):
     return (B + H)/2
 
 
+def quarterlyzator(ts):
+    """Takes a series of years where quarters are expressed as decimal numbers and returns strings of the form "'YYQQ"
+    """
+    qts = []
+    for date in ts:
+
+        rest = date - int(date)
+        if rest == .25:
+            qstr = 'Q2'
+        elif rest == .5:
+            qstr = 'Q3'
+        elif rest == .75:
+            qstr = 'Q4'
+        else:
+            qstr = 'Q1'
+        qts.append("'"+str(int(date))[-2:]+qstr)
+    return qts
+
+
+def map2list(iterator, return_np_array=True):
+    """Function to cast result from `map` to a tuple of stacked results
+
+    By default, this returns numpy arrays. Automatically checks if the map object is a tuple, and if not, just one object is returned (instead of a tuple). Be warned, this does not work if the result of interest of the mapped function is a single tuple.
+
+    Parameters
+    ----------
+    iterator : iter
+        the iterator returning from `map`
+
+    Returns
+    -------
+    numpy array (optional: list)
+    """
+
+    res = ()
+    mode = 0
+
+    for obj in iterator:
+
+        if not mode:
+            if isinstance(obj, tuple):
+                for entry in obj:
+                    res = res + ([entry],)
+                mode = 1
+            else:
+                res = [obj]
+                mode = 2
+
+        else:
+            if mode == 1:
+                for no, entry in enumerate(obj):
+                    res[no].append(entry)
+            else:
+                res.append(obj)
+
+    if return_np_array:
+        if mode == 1:
+            res = tuple(np.array(tupo) for tupo in res)
+        else:
+            res = np.array(res)
+
+    return res
+
+
+@njit(cache=True)
+def subt(A, B):
+    res = A
+    for i in range(len(A)):
+        for j in range(len(A)):
+            res[i][j] = A[i][j] - B[i][j]
+    return res
+
+
 @njit(cache=True)
 def cholesky(A):
     """
@@ -106,20 +170,14 @@ def cholesky(A):
     return L
 
 
-def quarterlyzator(ts):
-    """Takes a series of years where quarters are expressed as decimal numbers and returns strings of the form "'YYQQ"
+@njit(cache=True)
+def numba_rand_norm(loc=0, scale=1, size=1):
+    """A numba interface to create the user experience of np.random.normal with the size argument.
     """
-    qts = []
-    for date in ts:
+    
+    out = np.empty(size)
 
-        rest = date - int(date)
-        if rest == .25:
-            qstr = 'Q2'
-        elif rest == .5:
-            qstr = 'Q3'
-        elif rest == .75:
-            qstr = 'Q4'
-        else:
-            qstr = 'Q1'
-        qts.append("'"+str(int(date))[-2:]+qstr)
-    return qts
+    for i in np.ndindex(size):
+        out[i] = np.random.normal(loc, scale)
+
+    return out
