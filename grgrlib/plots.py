@@ -4,6 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import MaxNLocator
+from matplotlib.colors import LogNorm, SymLogNorm
 from .stuff import fast0
 
 
@@ -238,5 +239,6 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None):
     clb.set_label(zlabel)
 
     plt.tight_layout()
+
 
 pplot = grplot

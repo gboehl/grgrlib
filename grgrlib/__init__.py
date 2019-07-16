@@ -3,3 +3,4 @@
 
 from .stuff import *
 from .plots import *
+from .njitted import *
