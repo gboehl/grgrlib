@@ -93,7 +93,7 @@ def quarterlyzator(ts):
     return qts
 
 
-def map2list(iterator, return_np_array=True):
+def map2arr(iterator, return_np_array=True):
     """Function to cast result from `map` to a tuple of stacked results
 
     By default, this returns numpy arrays. Automatically checks if the map object is a tuple, and if not, just one object is returned (instead of a tuple). Be warned, this does not work if the result of interest of the mapped function is a single tuple.
@@ -136,3 +136,40 @@ def map2list(iterator, return_np_array=True):
             res = np.array(res)
 
     return res
+
+
+class model(object):
+
+    def __init__(self, func, par_names, par_values, arg_names, arg_values, xfromv=None):
+
+        self.func = func
+        self.par_names = par_names
+        self.pars = par_values
+        self.arg_names = arg_names
+        self.args = arg_values
+
+        if xfromv is None:
+
+            @njit
+            def xfromv(v):
+                return v
+
+        self.xfromv = xfromv
+
+    def __repr__(self):
+        return "A generic representation of a model"
+
+    def get_args(self):
+
+        arg_dict = dict(zip(self.arg_names, self.args))
+
+        return arg_dict
+
+    def set_args(self, **args):
+        for a in zip(args, args.values()):
+            self.args[self.arg_names.index(a[0])] = a[1]
+
+
+# aliases (bad habit)
+map2list = map2arr
+indof = np.searchsorted

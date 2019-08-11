@@ -1,6 +1,6 @@
 # grgrlib
 
-Library of unspeakably useful functions.
+Library of unspeakably useful functions. This is not ready for public use yet.
 
 ## Installation with `pip`
 
