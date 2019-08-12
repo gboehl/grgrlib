@@ -8,8 +8,7 @@ from interpolation.splines import UCGrid, nodes, eval_linear
 from interpolation.splines import extrap_options as xto
 
 
-@njit(nogil=True)
-def simulate_noeps_jit(t_func, T, transition_phase, initial_state):
+def simulate_noeps(t_func, T, transition_phase, initial_state):
 
     x = initial_state
 
@@ -24,7 +23,7 @@ def simulate_noeps_jit(t_func, T, transition_phase, initial_state):
     return res
 
 
-def simulate(t_func, T=None, transition_phase=0, initial_state=None, eps=None, show_warnings=True):
+def simulate(t_func, T=None, transition_phase=0, initial_state=None, eps=None, numba_jit=True, show_warnings=True):
     """Generic simulation command
 
     Hopefully one day merged with pydsge.stuff.simulate
@@ -43,28 +42,32 @@ def simulate(t_func, T=None, transition_phase=0, initial_state=None, eps=None, s
             UnboundLocalError(
                 "Either `initial_state` or `ndim` must be given.")
 
-    res = simulate_noeps_jit(t_func, T, transition_phase, initial_state)
+    if numba_jit:
+        res = simulate_noeps_jit(t_func, T, transition_phase, initial_state)
+    else:
+        res = simulate_noeps(t_func, T, transition_phase, initial_state)
 
     return res
 
 
-def pfi_t_func(pfunc, grid):
+def pfi_t_func(pfunc, grid, numba_jit=True):
     """Wrapper to return a jitted transition function based on the policy function and the grid
     """
 
-    @njit(nogil=True)
-    def pfi_t_func_jit(state):
+    def pfi_t_func_wrap(state):
 
-        # newstate = eval_linear(grid, pfunc, state, xto.LINEAR)
-        newstate = eval_linear(grid, pfunc, state)
+        newstate = eval_linear(grid, pfunc, state, xto.LINEAR)
+        # newstate = eval_linear(grid, pfunc, state)
 
         return newstate
 
-    return pfi_t_func_jit
+    if numba_jit:
+        return njit(pfi_t_func_wrap, nogil=True)
+    else:
+        return pfi_t_func_wrap
 
 
-@njit(nogil=True)
-def pfi_jit_determinisic(func, xfromv, pars, args, grid_shape, grid, gp, eps_max):
+def pfi_determinisic(func, xfromv, pars, args, grid_shape, grid, gp, eps_max):
 
     ndim = len(grid)
 
@@ -76,15 +79,15 @@ def pfi_jit_determinisic(func, xfromv, pars, args, grid_shape, grid, gp, eps_max
 
         values_old = values.copy()
         svalues = values.reshape(grid_shape)
-        # xe = xfromv(eval_linear(grid, svalues, values, xto.LINEAR))
-        xe = xfromv(eval_linear(grid, svalues, values))
+        xe = xfromv(eval_linear(grid, svalues, values, xto.LINEAR))
+        # xe = xfromv(eval_linear(grid, svalues, values))
         values = func(pars, gp, xe, args=args)[0]
         eps = np.linalg.norm(values - values_old)
 
     return values.reshape(grid_shape)
 
 
-def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, eps_max=1e-8):
+def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, eps_max=1e-8, numba_jit=True):
     """Somewhat generic policy function iteration
 
     For now only deterministic solutions are supported. This assumes a form of
@@ -116,6 +119,11 @@ def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, e
     if system_type is None:
         system_type = 'deterministic'
 
+    if numba_jit:
+        pfi_determinisic_func = pfi_determinisic_jit
+    else:
+        pfi_determinisic_func = pfi_determinisic
+
     flag = 0
 
     if model is not None:
@@ -134,7 +142,7 @@ def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, e
 
     if system_type == 'deterministic':
 
-        p_func = pfi_jit_determinisic(
+        p_func = pfi_determinisic_func(
             func, xfromv, pars, args, grid_shape, grid, gp, eps_max)
         if np.isnan(p_func).any():
             flag = 1
@@ -146,3 +154,7 @@ def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, e
         print('Error in pfi. Error no.:', flag)
 
     return p_func
+
+
+simulate_noeps_jit = njit(simulate_noeps, nogil=True, fastmath=True)
+pfi_determinisic_jit = njit(pfi_determinisic, nogil=True, fastmath=True)
