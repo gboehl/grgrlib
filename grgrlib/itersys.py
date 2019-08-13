@@ -129,12 +129,14 @@ def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, e
     if model is not None:
         func = model.func
         xfromv = model.xfromv
-        pars = model.pars
-        args = model.args
+        pars = np.ascontiguousarray(model.pars)
+        args = np.ascontiguousarray(model.args)
     else:
         if func is None or pars is None or xfromv is None:
             SyntaxError(
                 "If no model object is given, 'func', 'pars' and 'xfromv' must be provided.")
+        pars = np.ascontiguousarray(pars)
+        args = np.ascontiguousarray(args)
 
     gp = nodes(grid)
     grid_shape = tuple(g_spec[2] for g_spec in grid)

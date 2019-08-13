@@ -6,10 +6,10 @@ from numba import njit
 from .njitted import numba_rand_norm
 from .stuff import model
 
-bh_pars = np.array([1.1, 1., .3, 0., 1.])
-bh_par_names = ['discount_factor', 'delta', 'beta', 'gamma', 'costs']
-bh_args = np.array([False, False])
+bh_par_names = ['discount_factor', 'int.o.choice', 'bias', 't.extrap.', 'costs']
+bh_pars = [1/.99, 1., 1., 0., 0.]
 bh_arg_names = ['rational', 'noise']
+bh_args = [False, False]
 
 
 @njit(nogil=True, cache=True)
