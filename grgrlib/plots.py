@@ -29,7 +29,7 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
         else:
             labels = np.array([None])
     else:
-        labels = np.array(labels)
+        labels = np.ascontiguousarray(labels)
 
     if style is None:
         style = '-'
@@ -135,7 +135,7 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
     for obj_no, obj in enumerate(X_list):
 
         if legend is not None:
-            legend_tag = legend[obj_no]
+            legend_tag = np.ascontiguousarray(legend)[obj_no]
         else:
             legend_tag = None
 
