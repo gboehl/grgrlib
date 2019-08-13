@@ -145,10 +145,10 @@ class model(object):
         self.func = func
         self.par_names = par_names
         self.pars = par_values
-        self.init_pars = par_values
+        self.init_pars = par_values.copy()
         self.arg_names = arg_names
         self.args = arg_values
-        self.init_args = arg_values
+        self.init_args = arg_values.copy()
 
         if xfromv is None:
 
