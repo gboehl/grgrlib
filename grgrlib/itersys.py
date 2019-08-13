@@ -67,27 +67,30 @@ def pfi_t_func(pfunc, grid, numba_jit=True):
         return pfi_t_func_wrap
 
 
-def pfi_determinisic(func, xfromv, pars, args, grid_shape, grid, gp, eps_max):
+def pfi_determinisic(func, xfromv, pars, args, grid_shape, grid, gp, eps_max, it_max):
 
     ndim = len(grid)
-
     eps = 1e9
+    it_cnt = 0
 
     values = func(pars, gp, 0., args=args)[0]
 
     while eps > eps_max:
 
+        it_cnt += 1
         values_old = values.copy()
         svalues = values.reshape(grid_shape)
         xe = xfromv(eval_linear(grid, svalues, values, xto.LINEAR))
-        # xe = xfromv(eval_linear(grid, svalues, values))
         values = func(pars, gp, xe, args=args)[0]
         eps = np.linalg.norm(values - values_old)
 
-    return values.reshape(grid_shape)
+        if it_cnt == it_max:
+            break
+
+    return values.reshape(grid_shape), it_cnt, eps
 
 
-def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, eps_max=1e-8, numba_jit=True):
+def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, eps_max=1e-8, it_max=100, numba_jit=True):
     """Somewhat generic policy function iteration
 
     For now only deterministic solutions are supported. This assumes a form of
@@ -144,18 +147,19 @@ def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, e
 
     if system_type == 'deterministic':
 
-        p_func = pfi_determinisic_func(
-            func, xfromv, pars, args, grid_shape, grid, gp, eps_max)
+        p_func, it_cnt, eps = pfi_determinisic_func(
+            func, xfromv, pars, args, grid_shape, grid, gp, eps_max, it_max)
         if np.isnan(p_func).any():
-            flag = 1
+            flag += 1
+        if np.isnan(p_func).all():
+            flag += 2
+        if it_cnt == it_max:
+            flag += 4
 
     else:
         NotImplementedError('Only deterministic systems supported by now...')
 
-    if flag:
-        print('Error in pfi. Error no.:', flag)
-
-    return p_func
+    return p_func, flag
 
 
 simulate_noeps_jit = njit(simulate_noeps, nogil=True, fastmath=True)

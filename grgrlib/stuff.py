@@ -138,6 +138,21 @@ def map2arr(iterator, return_np_array=True):
     return res
 
 
+def napper(cond, interval=0.1):
+
+    import time
+
+    start_time = time.time()
+
+    while not cond():
+
+        elt = round(time.time() - start_time, 3)
+        print("Zzzz... "+str(elt)+"s", end='\r', flush=True)
+        time.sleep(interval)
+
+    print("Zzzz... "+str(elt)+"s.")
+
+
 class model(object):
 
     def __init__(self, func, par_names, par_values, arg_names, arg_values, xfromv=None):
