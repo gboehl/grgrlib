@@ -57,7 +57,6 @@ def pfi_t_func(pfunc, grid, numba_jit=True):
     def pfi_t_func_wrap(state):
 
         newstate = eval_linear(grid, pfunc, state, xto.LINEAR)
-        # newstate = eval_linear(grid, pfunc, state)
 
         return newstate
 

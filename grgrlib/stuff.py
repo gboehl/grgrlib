@@ -159,10 +159,10 @@ class model(object):
 
         self.func = func
         self.par_names = par_names
-        self.pars = par_values
+        self.pars = par_values.copy()
         self.init_pars = par_values.copy()
         self.arg_names = arg_names
-        self.args = arg_values
+        self.args = arg_values.copy()
         self.init_args = arg_values.copy()
 
         if xfromv is None:
@@ -177,8 +177,8 @@ class model(object):
         return "A generic representation of a model"
 
     def reset(self):
-        self.pars = self.init_pars
-        self.args = self.init_args
+        self.pars = self.init_pars.copy()
+        self.args = self.init_args.copy()
 
     def get_args(self):
 
