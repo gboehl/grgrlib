@@ -14,18 +14,21 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
         # make it a tuple
         X = X,
 
+    # use first object in X to get some infos
+    X0 = np.array(X[0])
+
     if yscale is None:
-        if X[0].ndim > 1:
+        if X0.ndim > 1:
             yscale = np.arange(X[0].shape[-2])
         else:
-            yscale = np.arange(len(X[0]))
+            yscale = np.arange(len(X0))
     elif isinstance(yscale, tuple):
         yscale = np.arange(yscale[0], yscale[0] +
-                           X[0].shape[-2]*yscale[1], yscale[1])
+                           X0.shape[-2]*yscale[1], yscale[1])
 
     if labels is None:
-        if X[0].shape[-1] > 1 and X[0].ndim > 1:
-            labels = np.arange(X[0].shape[-1]) + 1
+        if X0.shape[-1] > 1 and X0.ndim > 1:
+            labels = np.arange(X0.shape[-1]) + 1
         else:
             labels = np.array([None])
     else:
@@ -41,13 +44,16 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
         nlocbins = 'auto'
 
     # yet we can not be sure about the number of dimensions
-    if X[0].ndim == 1:
+    if X0.ndim == 1:
         selector = False
     else:
         selector = np.zeros(X[0].shape[-1], dtype=bool)
 
     X_list = []
-    for x in X:
+    for x_raw in X:
+
+        x = np.array(x_raw)
+
         # X.shape[0] is the number of time series
         # X.shape[1] is the len of the x axis (e.g. time)
         # X.shape[2] is the no of different objects (e.g. states)

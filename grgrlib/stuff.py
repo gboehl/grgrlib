@@ -153,7 +153,7 @@ def napper(cond, interval=0.1):
     print("Zzzz... "+str(elt)+"s.")
 
 
-def find_ss(ss_func, par, init_par, init_guess=None, ndim=None, max_iter=500, debug=False):
+def find_ss(ss_func, par, init_par, init_guess=None, ndim=None, max_iter=500, tol=None, method=None, debug=False):
     """Finds steady states for parameters give a set of parameters where the steady state is known. This is useful if you don't have a nice initial guess, but know some working parameters.
     ...
 
@@ -196,14 +196,17 @@ def find_ss(ss_func, par, init_par, init_guess=None, ndim=None, max_iter=500, de
 
     cnt = 0
 
+    if method is None:
+        method = 'hybr'
+
     if debug:
-        res = so.root(lambda x: ss_func(x, list(cur_par)), sval)
-        print(res)
+        res = so.root(lambda x: ss_func(x, list(cur_par)), sval, tol=tol, method=method)
+        return res
 
     while last_par is not par:
 
         try:
-            res = so.root(lambda x: ss_func(x, list(cur_par)), sval)
+            res = so.root(lambda x: ss_func(x, list(cur_par)), sval, tol=tol, method=method)
             suc = res['success']
         except:
             # if this is not even evaluable set success to False manually
@@ -225,9 +228,10 @@ def find_ss(ss_func, par, init_par, init_guess=None, ndim=None, max_iter=500, de
 
         cnt += 1
         if cnt >= max_iter:
-            print("Steady state could not be found after %s iterations" % max_iter)
+            print("Steady state could not be found after %s iterations. Message from last attempt: %s" % (max_iter, res['message']))
+            break
 
-    return sval
+    return res
 
 
 class model(object):
