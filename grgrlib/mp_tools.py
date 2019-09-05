@@ -8,7 +8,7 @@ def evolve_func(ser_algo_pop):
     new_pop = algo.evolve(pop)
     return dill.dumps((algo, new_pop))
 
-class desert_island(object):
+class Desert_island(object):
 
     def __init__(self, pool_size=None):
 
@@ -25,13 +25,15 @@ class desert_island(object):
             pool_size = pathos.multiprocessing.cpu_count()
 
         desert_island.pool_size = pool_size
-        desert_island.pool = pathos.multiprocessing.Pool(pool_size)
+        # desert_island.pool = pathos.multiprocessing.Pool(pool_size)
+        desert_island.pool = pathos.pools.ProcessPool(pool_size)
         desert_island.pool_size = pool_size
 
         return
 
     def run_evolve(self, algo, pop):
 
+        print('called2')
         if desert_island.pool is None:
 
             new_pop = algo.evolve(pop)
@@ -42,9 +44,15 @@ class desert_island(object):
             import dill
 
             ser_algo_pop = dill.dumps((algo, pop))
-            res = desert_island.pool.apply_async(evolve_func, (ser_algo_pop,))
+            res = desert_island.pool.pipe(evolve_func, (ser_algo_pop,))
+            # res = desert_island.pool.pipe(evolve_func, (ser_algo_pop,))
+            # res = desert_island.pool.apply_async(evolve_func, (ser_algo_pop,))
 
-            return dill.loads(res.get())
+            print('ret')
+            ret = dill.loads(res.get())
+            print('got ret')
+            return ret
+            # return dill.loads(res.get())
 
     def get_name(self):
         return "Desert island (1987)"
