@@ -80,10 +80,14 @@ def kombine_run_mcmc(self, N, p0=None, lnpost0=None, lnprop0=None, blob0=None, *
 
     pbar = kwargs.pop('pbar', None)
 
+    if pbar is not None:
+        pbar.write('Updating KDE... (mean acceptance_fraction: ' + str(np.mean(self.acceptance_fraction).round(3)) + ', mean ACT: ' + str(np.mean(self.autocorrelation_times).round(3)) + ')')
+
     for results in self.sample(p0, lnpost0, lnprop0, blob0, N, **kwargs):
 
         if pbar is not None:
             pbar.update()
+            pbar.set_description('mean ll: '+str(np.mean(self._lnpost).round(5)))
 
     # Store the results for later continuation and toss out the blob
     self._last_run_mcmc_result = results[:3]
