@@ -6,7 +6,7 @@ from numba import njit
 from .njitted import numba_rand_norm
 from .stuff import model
 
-bh_par_names = ['discount_factor', 'int.o.choice', 'bias', 't.extrap.', 'costs']
+bh_par_names = ['discount_factor', 'intensity_of_choice', 'bias', 'degree_trend_extrapolation', 'costs']
 bh_pars = [1/.99, 1., 1., 0., 0.]
 bh_arg_names = ['rational', 'noise']
 bh_args = [False, False]
