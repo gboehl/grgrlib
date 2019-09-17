@@ -3,6 +3,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LogNorm, SymLogNorm
 from .stuff import fast0
@@ -27,7 +28,9 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
                            X0.shape[-2]*yscale[1], yscale[1])
 
     if labels is None:
-        if X0.shape[-1] > 1 and X0.ndim > 1:
+        if isinstance(X[0], pd.DataFrame):
+            labels = np.array(X[0].keys())
+        elif X0.shape[-1] > 1 and X0.ndim > 1:
             labels = np.arange(X0.shape[-1]) + 1
         else:
             labels = np.array([None])
@@ -136,7 +139,8 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
         [axis.set_prop_cycle(None) for axis in ax]
         figs = None
 
-    locator = MaxNLocator(nbins=nlocbins, steps=[1, 2, 4, 8, 10])
+    if not isinstance(yscale, pd.DatetimeIndex):
+        locator = MaxNLocator(nbins=nlocbins, steps=[1, 2, 4, 8, 10])
 
     for obj_no, obj in enumerate(X_list):
 
@@ -165,7 +169,8 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
             ax[i].tick_params(axis='both', which='both',
                               top=False, right=False)
             ax[i].set_xlabel(labels[selector][i])
-            ax[i].xaxis.set_major_locator(locator)
+            if not isinstance(yscale, pd.DatetimeIndex):
+                ax[i].xaxis.set_major_locator(locator)
 
     if figs is not None:
         [fig.tight_layout() for fig in figs]
