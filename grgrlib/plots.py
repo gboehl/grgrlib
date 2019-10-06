@@ -154,11 +154,11 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
         for i in range(no_states):
 
             if line is not None:
-                ax[i].plot(yscale, line[:, selector][:, i],
-                           style[obj_no], lw=2, label=legend_tag)
+                last_plot = ax[i].plot(yscale, line[:, selector][:, i],
+                                       style[obj_no], lw=2, label=legend_tag)
             if interval is not None:
                 ax[i].fill_between(
-                    yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha, label=legend_tag if line is None else None)
+                    yscale, *interval[:, :, selector][:, :, i], lw=0, color=last_plot[-1].get_color(), alpha=alpha, label=legend_tag if line is None else None)
             elif bulk is not None:
                 if len(X_list) > 1:
                     color = 'C'+str(obj_no)

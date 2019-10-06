@@ -272,6 +272,23 @@ class model(object):
             self.args[self.arg_names.index(a[0])] = a[1]
 
 
+class GPP:
+    """Generic PYGMO problem
+    """
+
+    name = 'GPP'
+
+    def __init__(self, func, bounds):
+
+        self.func = func
+        self.bounds = bounds
+
+    def fitness(self, x):
+        return [-self.func(x)]
+
+    def get_bounds(self):
+        return self.bounds
+
 # aliases (bad habit)
 map2list = map2arr
 indof = np.searchsorted
