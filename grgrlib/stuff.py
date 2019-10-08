@@ -8,6 +8,24 @@ import warnings
 import time
 
 
+class GPP:
+    """Generic PYGMO problem. Assumes maximization.
+    """
+
+    name = 'GPP'
+
+    def __init__(self, func, bounds):
+
+        self.func = func
+        self.bounds = bounds
+
+    def fitness(self, x):
+        return [-self.func(x)]
+
+    def get_bounds(self):
+        return self.bounds
+
+
 def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
 
@@ -272,22 +290,26 @@ class model(object):
             self.args[self.arg_names.index(a[0])] = a[1]
 
 
-class GPP:
-    """Generic PYGMO problem
-    """
+def timeprint(s, round_to=5, full=False):
 
-    name = 'GPP'
+    if s < 60:
+        if full:
+            return str(np.round(s, round_to)) + ' seconds'
+        return str(np.round(s, round_to)) + 's'
 
-    def __init__(self, func, bounds):
+    m, s = divmod(s, 60)
 
-        self.func = func
-        self.bounds = bounds
+    if m < 60:
+        if full:
+            return '%s minutes, %s seconds' %(m, np.round(s, round_to))
+        return '%sm%ss' %(m, np.round(s, round_to))
 
-    def fitness(self, x):
-        return [-self.func(x)]
+    h, m = divmod(m, 60)
 
-    def get_bounds(self):
-        return self.bounds
+    if full:
+        return '%s hours, %s minutes, %s seconds' %(h, m, np.round(s, round_to))
+    return '%sh%sm%ss' %(h, m, np.round(s, round_to))
+
 
 # aliases (bad habit)
 map2list = map2arr
