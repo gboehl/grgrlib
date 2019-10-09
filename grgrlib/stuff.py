@@ -301,14 +301,14 @@ def timeprint(s, round_to=5, full=False):
 
     if m < 60:
         if full:
-            return '%s minutes, %s seconds' %(m, np.round(s, round_to))
-        return '%sm%ss' %(m, np.round(s, round_to))
+            return '%s minutes, %s seconds' %(int(m), int(s))
+        return '%sm%ss' %(int(m), int(s))
 
     h, m = divmod(m, 60)
 
     if full:
-        return '%s hours, %s minutes, %s seconds' %(h, m, np.round(s, round_to))
-    return '%sh%sm%ss' %(h, m, np.round(s, round_to))
+        return '%s hours, %s minutes, %s seconds' %(int(h), int(m), int(s))
+    return '%sh%sm%ss' %(int(h), int(m), int(s))
 
 
 # aliases (bad habit)
