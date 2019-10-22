@@ -218,13 +218,15 @@ def find_ss(ss_func, par, init_par, init_guess=None, ndim=None, max_iter=500, to
         method = 'hybr'
 
     if debug:
-        res = so.root(lambda x: ss_func(x, list(cur_par)), sval, tol=tol, method=method)
+        res = so.root(lambda x: ss_func(x, list(cur_par)),
+                      sval, tol=tol, method=method)
         return res
 
     while last_par is not par:
 
         try:
-            res = so.root(lambda x: ss_func(x, list(cur_par)), sval, tol=tol, method=method)
+            res = so.root(lambda x: ss_func(x, list(cur_par)),
+                          sval, tol=tol, method=method)
             suc = res['success']
         except:
             # if this is not even evaluable set success to False manually
@@ -246,7 +248,8 @@ def find_ss(ss_func, par, init_par, init_guess=None, ndim=None, max_iter=500, to
 
         cnt += 1
         if cnt >= max_iter:
-            print("Steady state could not be found after %s iterations. Message from last attempt: %s" % (max_iter, res['message']))
+            print("Steady state could not be found after %s iterations. Message from last attempt: %s" % (
+                max_iter, res['message']))
             break
 
     return res
@@ -301,14 +304,14 @@ def timeprint(s, round_to=5, full=False):
 
     if m < 60:
         if full:
-            return '%s minutes, %s seconds' %(int(m), int(s))
-        return '%sm%ss' %(int(m), int(s))
+            return '%s minutes, %s seconds' % (int(m), int(s))
+        return '%sm%ss' % (int(m), int(s))
 
     h, m = divmod(m, 60)
 
     if full:
-        return '%s hours, %s minutes, %s seconds' %(int(h), int(m), int(s))
-    return '%sh%sm%ss' %(int(h), int(m), int(s))
+        return '%s hours, %s minutes, %s seconds' % (int(h), int(m), int(s))
+    return '%sh%sm%ss' % (int(h), int(m), int(s))
 
 
 # aliases (bad habit)

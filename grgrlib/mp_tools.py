@@ -1,12 +1,14 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+
 def evolve_func(ser_algo_pop):
     # The evolve function that is actually run from the separate processes in the desert island
-    import dill 
+    import dill
     algo, pop = dill.loads(ser_algo_pop)
     new_pop = algo.evolve(pop)
     return dill.dumps((algo, new_pop))
+
 
 class Desert_island(object):
 
