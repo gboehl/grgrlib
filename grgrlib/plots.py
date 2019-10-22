@@ -9,7 +9,7 @@ from matplotlib.colors import LogNorm, SymLogNorm
 from .stuff import fast0
 
 
-def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_plot=False, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3):
+def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_plot=False, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3, **plotargs):
 
     if not isinstance(X, tuple):
         # make it a tuple
@@ -155,10 +155,10 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
 
             if line is not None:
                 last_plot = ax[i].plot(yscale, line[:, selector][:, i],
-                                       style[obj_no], lw=2, label=legend_tag)
+                                       style[obj_no], lw=2, label=legend_tag, **plotargs)
             if interval is not None:
                 ax[i].fill_between(
-                    yscale, *interval[:, :, selector][:, :, i], lw=0, color=last_plot[-1].get_color(), alpha=alpha, label=legend_tag if line is None else None)
+                    yscale, *interval[:, :, selector][:, :, i], lw=0, color=last_plot[-1].get_color(), alpha=alpha, label=legend_tag if line is None else None, **plotargs)
             elif bulk is not None:
                 if len(X_list) > 1:
                     color = 'C'+str(obj_no)
