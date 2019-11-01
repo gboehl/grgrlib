@@ -314,6 +314,70 @@ def timeprint(s, round_to=5, full=False):
     return '%sh%sm%ss' % (int(h), int(m), int(s))
 
 
-# aliases (bad habit)
+def mvn_sobol(mean=None, cov=None, size=1):
+    """Multivariate normal with sobol.
+
+    Creates a sample of size `size` using the SOBOL quasi-random number sequences.
+    """
+
+    import sobol_seq
+    from scipy.stats import norm
+    import sobol_new
+
+    err_msg = 'Argument cov must be a dxd ndarray, with d>1, defining a symmetric positive matrix.'
+
+    if mean is None:
+        if cov is None:
+            raise ValueError(err_msg)
+        dim = cov.shape[0]
+        mean = np.zeros(dim)
+    elif isinstance(mean, float):
+        dim = cov.shape[0]
+        mean = np.ones(dim)*mean
+    elif cov is None:
+        dim = mean.shape[0]
+        cov = np.eye(dim)
+    else:
+        dim = mean.shape[0]
+        assert cov.shape == mean.shape*2, err_msg
+
+    try:
+        L = np.linalg.cholesky(cov)
+    except:
+        raise ValueError(err_msg)
+
+    shape = np.multiply(*size) if isinstance(size, tuple) else size
+    size = size if isinstance(size, tuple) else (size,)
+
+    sobols = sobol_new.sobol_points(shape+1,dim)[1:]
+    z = norm.ppf(sobols)
+    res = mean + np.dot(z, L.T)
+
+    return res.reshape(size + (dim,))
+
+
+def shuffle(a, axis=-1):
+    """Shuffle along single axis
+    """
+
+    shape = a.shape
+    res = a.reshape(-1,a.shape[axis])
+    np.random.shuffle(res)
+
+    return res.reshape(shape)
+
+
+def blow_matrix(X, cov):
+    """Analitical stretch to transform X -> Y with Y = X + Z and Z ~ N(0,cov).
+    """
+
+    mean = np.mean(X, axis=0)
+
+    X = mean + (X-mean) @ sl.sqrtm(c2 @ nl.inv(np.cov(X.T)) + np.eye(X.shape[1]))
+
+    return X
+
+
+# aliases 
 map2list = map2arr
 indof = np.searchsorted
