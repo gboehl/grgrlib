@@ -447,6 +447,15 @@ def blow_matrix(X, cov):
     return X
 
 
+def mode(x):
+    """Find mode of (unimodal) univariate distribution"""
+
+    xs = np.sort(x)
+    kde = ss.gaussian_kde(xs)
+    p = kde.evaluate(xs)
+    return xs[p.argmax()]
+
+
 # aliases 
 map2list = map2arr
 indof = np.searchsorted
