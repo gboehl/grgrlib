@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import tqdm
+import time
 from sys import stdout
 import numpy as np
-from grgrlib import map2arr
+from grgrlib import map2arr, timeprint
 
 
 def cmaes(objective_fct, xstart, sigma, popsize=None, mueff=None, pool=None, maxfev=None, verb_disp=100, verb_save=1000, **args):
@@ -13,6 +14,7 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, mueff=None, pool=None, max
 
     es.objective_fct = objective_fct
     es.pool = pool
+    es.stime = time.time()
 
     while not es.stop():
         es.run()
@@ -73,7 +75,7 @@ class CMAESParameters(object):
 
 
 class CMAES(object):  # could also inherit from object
-    def __init__(self, xstart, sigma, popsize=None, mueff=None, maxfev=None, show_pbar=True, **args):
+    def __init__(self, xstart, sigma, popsize=None, mueff=None, maxfev=None, pbar_sensitivity=.99, **args):
         """Instantiate `CMAES` object instance using `xstart` and `sigma`.
 
         Parameters
@@ -98,7 +100,9 @@ class CMAES(object):  # could also inherit from object
         self.params = CMAESParameters(N, popsize, mueff, **args)
         popsize = self.params.default_popsize
         self.maxfev = maxfev or 100*popsize + 150*(N + 3)**2*popsize**0.5
-        self.show_pbar = show_pbar
+        self.show_pbar = pbar_sensitivity < 1
+        self.pbar_sensitivity = pbar_sensitivity
+        self.print_next = True
 
         # initializing dynamic state variables
         # initial point, distribution mean, a copy
@@ -137,23 +141,24 @@ class CMAES(object):  # could also inherit from object
             np.random.seed(s)
 
             f = np.inf
-            niter = 0
+            nattm = 0
 
             while np.isinf(f):
                 z = self.sigma * self.eigenvalues**0.5 * np.random.normal(size=self.params.ndim)
                 y = self.eigenbasis @ z
                 x = self.xmean + y
                 f = self.objective_fct(x)
-                niter += 1
+                nattm += 1
 
-            return f, x, niter
+            return f, x, nattm
 
         seeds = np.random.randint(2**32-2, size=self.params.lam)
         res = self.pool.imap(func, seeds)
         res = wrap(res, total=self.params.lam, unit='sample(s)', dynamic_ncols=True)
 
-        fvals, xvals, niters = map2arr(res)
-        self.show_pbar = np.mean(niters) > 3
+        fvals, xvals, nattms = map2arr(res)
+        self.mean_attm = np.mean(nattms) 
+        self.show_pbar = 1 - 1/self.mean_attm >= self.pbar_sensitivity
 
         # bookkeeping and convenience short cuts
         # evaluations used within tell
@@ -198,10 +203,10 @@ class CMAES(object):  # could also inherit from object
 
         # Adapt step-size sigma
         cn, sum_square_ps = par.cs / par.damps, np.sum(self.ps**2)
-        self.sigma *= np.exp(np.minimum(1, cn * (sum_square_ps / self.params.ndim - 1) / 2))
+        self.sigma_shadow = self.sigma * np.exp(np.minimum(1, cn * (sum_square_ps / self.params.ndim - 1) / 2))
 
         if self.params.maxsigma is not None:
-            self.sigma = np.minimum(self.sigma, self.params.maxsigma)
+            self.sigma = np.minimum(self.sigma_shadow, self.params.maxsigma)
 
     def stop(self):
         """return satisfied termination conditions in a dictionary,
@@ -248,20 +253,28 @@ class CMAES(object):  # could also inherit from object
             return
         iteration = self.counteval / self.params.lam
 
-        if iteration == 1 or iteration % (10 * verb_modulo) < 1:
-            print('evals: ax-ratio   std (min/max)     f-value')
+        do_print = False
+        do_print |= iteration <= 2
+        do_print |= iteration % verb_modulo < 1 
+        do_print |= self.sigma != self.sigma_shadow
+        do_print |= self.print_next
 
-        if iteration <= 2 or iteration % verb_modulo < 1:
-            print(str(self.counteval).rjust(5) + ': ' +
-                  ' %6.1e %8.1e %8.1e  %8.8e ' % (np.linalg.cond(self.C)**0.5,
-                                                 self.sigma *
-                                                 np.min(np.diagonal(
-                                                     self.C))**0.5,
-                                                 self.sigma *
-                                                 np.max(np.diagonal(
-                                                     self.C))**0.5,
-                                                 self.fvals[0]))
-                                                 # self.fvals[0]) + "\r", end='')
+        if iteration == 1 or iteration % (10 * verb_modulo) < 1:
+            print('evals: ax-ratio   std (min/max)     f-value     t(mm:ss)')
+
+        if do_print:
+            self.print_next = False
+            diag_sqrt = np.diagonal(self.C)**0.5
+            info_str = str(self.counteval).rjust(5) + ': ' + ' %6.1e %7.0e %7.0e  %8.8e ' % (np.linalg.cond(self.C)**0.5, self.sigma*np.min(diag_sqrt), self.sigma*np.max(diag_sqrt), self.fvals[0])
+
+            if self.sigma != self.sigma_shadow:
+                info_str += "[burn-in: %0.2f, rejecting %s%%]" %(self.sigma_shadow, int((1-1/self.mean_attm)*100))
+                self.print_next = True
+            else:
+                info_str += " (%02d:%02d)" %divmod(time.time() - self.stime, 60) 
+
+
+            print(info_str)
             stdout.flush()
 
 

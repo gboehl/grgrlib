@@ -4,7 +4,7 @@
 import numpy as np
 from numba import njit
 from .njitted import numba_rand_norm
-from .stuff import model
+from .core import model
 
 bh_par_names = ['discount_factor', 'intensity_of_choice',
                 'bias', 'degree_trend_extrapolation', 'costs']

@@ -26,7 +26,7 @@ def simulate_noeps(t_func, T, transition_phase, initial_state):
 def simulate(t_func, T=None, transition_phase=0, initial_state=None, eps=None, numba_jit=True, show_warnings=True):
     """Generic simulation command
 
-    Hopefully one day merged with pydsge.stuff.simulate
+    Hopefully one day merged with pydsge.core.simulate
     """
 
     if T is None:

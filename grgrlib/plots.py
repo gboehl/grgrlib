@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LogNorm, SymLogNorm
-from .stuff import fast0
+from .core import fast0
 
 
 def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_plot=False, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3, **plotargs):

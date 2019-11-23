@@ -1,6 +1,6 @@
 #!/bin/python2
 # -*- coding: utf-8 -*-
 
-from .stuff import *
+from .core import *
 from .plots import *
 from .njitted import *
