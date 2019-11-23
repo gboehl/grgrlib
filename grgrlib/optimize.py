@@ -32,9 +32,10 @@ class CMAESParameters(object):
 
     """
 
-    def __init__(self, N, popsize, mueff=None, fatol=None, frtol=None, xtol=None):
+    def __init__(self, N, popsize, mueff=None, maxsigma=None, fatol=None, frtol=None, xtol=None):
 
         self.ndim = N
+        self.maxsigma = maxsigma
         self.chiN = (1 - 1. / (4 * N) + 1. / (21 * N**2))
         self.fatol = fatol or 1e-8
         self.frtol = frtol or 1e-8
@@ -46,13 +47,12 @@ class CMAESParameters(object):
         # number of parents/points/solutions for recombination
         self.mu = int(self.lam / 2)
 
-        lamspan = np.arange(self.lam)
-        weights = np.where(lamspan < self.mu, np.log(self.lam / 2 + 0.2) - np.log(lamspan + 1), 0)
+        weights = np.zeros(self.lam)
+        weights[:self.mu] = np.log(self.lam / 2 + 0.2) - np.log(np.arange(self.mu) + 1)
 
-        w_sum = np.sum(weights[:self.mu])
-        self.weights = weights / w_sum
+        self.weights = weights / np.sum(weights)
         # variance-effectiveness of sum w_i x_i
-        self.mueff = mueff or np.sum(self.weights[:self.mu])**2 / np.sum(self.weights[:self.mu]**2)
+        self.mueff = mueff or np.sum(self.weights)**2 / np.sum(self.weights**2)
 
         print('[cma-es:]'.ljust(15, ' ') + 
               '(%d' % (self.mu) + ',%d' % (self.lam) + ')-' + 'CMA-ES' + 
@@ -102,7 +102,7 @@ class CMAES(object):  # could also inherit from object
 
         # initializing dynamic state variables
         # initial point, distribution mean, a copy
-        self.xmean = np.array(xstart[:])
+        self.xmean = np.array(xstart)
         self.sigma = sigma
         # evolution path for C
         self.pc = np.zeros(N)  
@@ -151,14 +151,13 @@ class CMAES(object):  # could also inherit from object
         seeds = np.random.randint(2**32-2, size=self.params.lam)
         res = self.pool.imap(func, seeds)
         res = wrap(res, total=self.params.lam, unit='sample(s)', dynamic_ncols=True)
-        fvals, xvals, niters = map2arr(res)
 
-        self.show_pbar = np.mean(niters) > 5
+        fvals, xvals, niters = map2arr(res)
+        self.show_pbar = np.mean(niters) > 3
 
         # bookkeeping and convenience short cuts
         # evaluations used within tell
         self.counteval += len(fvals)  
-        N = len(self.xmean)
         par = self.params
         # not a copy, xmean is assigned anew later
         xold = self.xmean  
@@ -170,44 +169,39 @@ class CMAES(object):  # could also inherit from object
         self.best.update(xvals[0], self.fvals[0], self.counteval)
 
         # recombination, compute new weighted mean value
-        self.xmean = xvals[0:par.mu].T @ par.weights[:par.mu]
+        self.xmean = xvals.T @ par.weights
 
         invsqrt = np.linalg.inv(np.linalg.cholesky(self.C))
 
         # Cumulation: update evolution paths
         y = self.xmean - xold
-        # == C**(-1/2) * (xnew - xold)
+        # z = C**(-1/2) * (xnew - xold)
         z = invsqrt @ y  
         csn = (par.cs * (2 - par.cs) * par.mueff)**0.5 / self.sigma
         self.ps = (1 - par.cs) * self.ps + csn * z
         ccn = (par.cc * (2 - par.cc) * par.mueff)**0.5 / self.sigma
         # turn off rank-one accumulation when sigma increases quickly
-        hsig = (np.sum(self.ps**2) / N  # ||ps||^2 / N is 1 in expectation
+        hsig = (np.sum(self.ps**2) / self.params.ndim  # ||ps||^2 / N is 1 in expectation
                 # account for initial value of ps
                 / (1-(1-par.cs)**(2*self.counteval/par.lam))
                 # should be smaller than 2 + ...
-                < 2 + 4./(N+1))  
+                < 2 + 4./(self.params.ndim+1))  
         self.pc = (1 - par.cc)*self.pc + ccn*hsig*y
 
         # Adapt covariance matrix C
         # minor adjustment for the variance loss from hsig
         c1a = par.c1*(1 - (1-hsig**2)*par.cc*(2-par.cc))
         # C *= 1 - c1 - cmu * sum(w)
-        self.C *= (1 - c1a - par.cmu * np.sum(par.weights)) 
+        self.C *= 1 - c1a - par.cmu
         self.C += par.c1*np.outer(self.pc, self.pc)
-
-        # so-called rank-mu update
-        for k, wk in enumerate(par.weights):  
-            # guaranty positive definiteness
-            if wk < 0:  
-                wk *= N * self.sigma**2 / \
-                    np.sum((invsqrt @ xvals[k] - xold)**2)
-            self.C += np.outer(xvals[k]-xold, xvals[k] -
-                               xold)*wk*par.cmu/self.sigma**2
+        self.C += par.cmu/self.sigma**2 * (xvals-xold).T @ np.diag(par.weights) @ (xvals-xold) 
 
         # Adapt step-size sigma
         cn, sum_square_ps = par.cs / par.damps, np.sum(self.ps**2)
-        self.sigma *= np.exp(np.minimum(1, cn * (sum_square_ps / N - 1) / 2))
+        self.sigma *= np.exp(np.minimum(1, cn * (sum_square_ps / self.params.ndim - 1) / 2))
+
+        if self.params.maxsigma is not None:
+            self.sigma = np.minimum(self.sigma, self.params.maxsigma)
 
     def stop(self):
         """return satisfied termination conditions in a dictionary,
@@ -220,13 +214,13 @@ class CMAES(object):  # could also inherit from object
             return False
 
         if len(self.fvals) > 1 and self.fvals[-1] - self.fvals[0] < self.params.fatol:
-            return 'fatol of %1.1e.' %self.params.fatol
+            return 'fatol of %1.0e.' %self.params.fatol
         if len(self.fvals) > 1 and self.fvals[-1]/self.fvals[0] - 1 < self.params.frtol:
-            return 'frtol of %1.1e.' %self.params.frtol
+            return 'frtol of %1.0e.' %self.params.frtol
         if self.sigma * np.max(self.eigenvalues)**0.5 < self.params.xtol:
-            return 'xtol of %1.1e.' %self.params.xtol
+            return 'xtol of %1.0e.' %self.params.xtol
         if self.counteval > self.maxfev:
-            return 'maxfev of %1.1e.' %self.maxfev
+            return 'maxfev of %1.0e.' %self.maxfev
 
         return False
 
