@@ -7,18 +7,19 @@ import numpy as np
 from grgrlib import map2arr
 
 
-def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, maxfevals=None, verb_disp=100, verb_save=1000, **args):
+def cmaes(objective_fct, xstart, sigma, popsize=None, mueff=None, pool=None, maxfev=None, verb_disp=100, verb_save=1000, **args):
 
-    es = CMAES(xstart, sigma, maxfevals=maxfevals, popsize=popsize, **args)
+    es = CMAES(xstart, sigma, mueff=mueff, maxfev=maxfev, popsize=int(popsize), **args)
 
     es.objective_fct = objective_fct
     es.pool = pool
 
     while not es.stop():
-        es.run()  # update distribution parameters
+        es.run()
         es.disp(verb_disp)
 
-    if verb_disp:  # do not print by default to allow silent verbosity
+    # do not print by default to allow silent verbosity
+    if verb_disp:  
 
         es.disp(1)
         print('[cma-es:]'.ljust(15, ' ') + 'termination by ' + es.stop())
@@ -31,7 +32,7 @@ class CMAESParameters(object):
 
     """
 
-    def __init__(self, N, popsize, ncores, fatol=None, frtol=None, xtol=None):
+    def __init__(self, N, popsize, mueff=None, fatol=None, frtol=None, xtol=None):
 
         self.ndim = N
         self.chiN = (1 - 1. / (4 * N) + 1. / (21 * N**2))
@@ -39,45 +40,40 @@ class CMAESParameters(object):
         self.frtol = frtol or 1e-8
         self.xtol = xtol or 1e-8
 
-        self.default_popsize = 4 + int(3*np.log(N))
-        self.lam = int(popsize) if popsize else self.default_popsize
+        self.default_popsize = int(4 + 3*np.log(N))
+        self.lam = popsize or self.default_popsize
+
         # number of parents/points/solutions for recombination
         self.mu = int(self.lam / 2)
 
         lamspan = np.arange(self.lam)
-        weights = np.where(lamspan < self.mu, np.log(
-            self.lam / 2 + 0.5) - np.log(lamspan + 1), 0)
+        weights = np.where(lamspan < self.mu, np.log(self.lam / 2 + 0.2) - np.log(lamspan + 1), 0)
 
         w_sum = np.sum(weights[:self.mu])
         self.weights = weights / w_sum
         # variance-effectiveness of sum w_i x_i
-        self.mueff = np.sum(
-            self.weights[:self.mu])**2 / np.sum(self.weights[:self.mu]**2)
+        self.mueff = mueff or np.sum(self.weights[:self.mu])**2 / np.sum(self.weights[:self.mu]**2)
+
+        print('[cma-es:]'.ljust(15, ' ') + 
+              '(%d' % (self.mu) + ',%d' % (self.lam) + ')-' + 'CMA-ES' + 
+              ' (mu_w=%2.1f,w_1=%d%%)' % (self.mueff, int(100 * self.weights[0])) + 
+              ' in %d dimensions (seed=%s)' % (N, np.random.get_state()[1][0]))
 
         # Strategy parameter setting: Adaptation
         # time constant for cumulation for C
-        self.cc = (4 + self.mueff/N) / (N+4 + 2*self.mueff/N)
+        self.cc = (4 + self.mueff/N) / (N + 4 + 2*self.mueff/N)
         # time constant for cumulation for sigma control
         self.cs = (self.mueff + 2) / (N + self.mueff + 5)
         # learning rate for rank-one update of C
         self.c1 = 2 / ((N + 1.3)**2 + self.mueff)
-        self.cmu = np.minimum(1 - self.c1, 2 * (self.mueff - 2 + 1/self.mueff) /
-                              ((N + 2)**2 + self.mueff))  # and for rank-mu update
-        self.damps = 2 * self.mueff/self.lam + 0.3 + \
-            self.cs  # damping for sigma, usually close to 1
-
-        if ncores is None:
-            try:
-                import pathos
-                self.batchsize = pathos.multiprocessing.cpu_count()
-            except ModuleNotFoundError:
-                self.batchsize = 4  # one-size-fits-them all
-        else:
-            self.batchsize = ncores 
+        # and for rank-mu update
+        self.cmu = np.minimum(1 - self.c1, 2 * (self.mueff - 2 + 1/self.mueff) /((N + 2)**2 + self.mueff))  
+        # damping for sigma, usually close to 1
+        self.damps = 2 * self.mueff/self.lam + 0.3 + self.cs  
 
 
 class CMAES(object):  # could also inherit from object
-    def __init__(self, xstart, sigma, popsize=None, maxfevals=None, ncores=None, show_pbar=True, **args):
+    def __init__(self, xstart, sigma, popsize=None, mueff=None, maxfev=None, show_pbar=True, **args):
         """Instantiate `CMAES` object instance using `xstart` and `sigma`.
 
         Parameters
@@ -89,7 +85,7 @@ class CMAES(object):  # could also inherit from object
                 initial step-size (standard deviation in each coordinate)
             `popsize`: `int` or `str`
                 population size, number of candidate samples per iteration
-            `maxfevals`: `int` or `str`
+            `maxfev`: `int` or `str`
                 maximal number of function evaluations, a string is
                 evaluated with ``N`` as search space dimension
 
@@ -97,20 +93,24 @@ class CMAES(object):  # could also inherit from object
         creates a `CMAESParameters` instance for static parameters.
         """
         # process some input parameters and set static parameters
-        N = len(xstart)  # number of objective variables/problem dimension
-        self.params = CMAESParameters(N, popsize, ncores, **args)
+        # number of objective variables/problem dimension
+        N = len(xstart)  
+        self.params = CMAESParameters(N, popsize, mueff, **args)
         popsize = self.params.default_popsize
-        self.maxfevals = maxfevals or 100*popsize + 150*(N + 3)**2*popsize**0.5
+        self.maxfev = maxfev or 100*popsize + 150*(N + 3)**2*popsize**0.5
         self.show_pbar = show_pbar
 
         # initializing dynamic state variables
         # initial point, distribution mean, a copy
         self.xmean = np.array(xstart[:])
         self.sigma = sigma
-        self.pc = np.zeros(N)  # evolution path for C
-        self.ps = np.zeros(N)  # and for sigma
+        # evolution path for C
+        self.pc = np.zeros(N)  
+        # and for sigma
+        self.ps = np.zeros(N)  
         self.C = np.eye(N)
-        self.counteval = 0  # countiter should be equal to counteval / lam
+        # countiter should be equal to counteval / lam
+        self.counteval = 0  
         self.best = BestSolution()
 
     def run(self):
@@ -153,17 +153,20 @@ class CMAES(object):  # could also inherit from object
         res = wrap(res, total=self.params.lam, unit='sample(s)', dynamic_ncols=True)
         fvals, xvals, niters = map2arr(res)
 
-        self.show_pbar = np.mean(niters) > 3
+        self.show_pbar = np.mean(niters) > 5
 
         # bookkeeping and convenience short cuts
-        self.counteval += len(fvals)  # evaluations used within tell
+        # evaluations used within tell
+        self.counteval += len(fvals)  
         N = len(self.xmean)
         par = self.params
-        xold = self.xmean  # not a copy, xmean is assigned anew later
+        # not a copy, xmean is assigned anew later
+        xold = self.xmean  
 
-        # Sort by fitness
+        # sort by fitness
         xvals = np.array(xvals)[np.argsort(fvals)]
-        self.fvals = np.sort(fvals)  # used for termination and display only
+        # used for termination and display only
+        self.fvals = np.sort(fvals)  
         self.best.update(xvals[0], self.fvals[0], self.counteval)
 
         # recombination, compute new weighted mean value
@@ -173,7 +176,8 @@ class CMAES(object):  # could also inherit from object
 
         # Cumulation: update evolution paths
         y = self.xmean - xold
-        z = invsqrt @ y  # == C**(-1/2) * (xnew - xold)
+        # == C**(-1/2) * (xnew - xold)
+        z = invsqrt @ y  
         csn = (par.cs * (2 - par.cs) * par.mueff)**0.5 / self.sigma
         self.ps = (1 - par.cs) * self.ps + csn * z
         ccn = (par.cc * (2 - par.cc) * par.mueff)**0.5 / self.sigma
@@ -181,16 +185,21 @@ class CMAES(object):  # could also inherit from object
         hsig = (np.sum(self.ps**2) / N  # ||ps||^2 / N is 1 in expectation
                 # account for initial value of ps
                 / (1-(1-par.cs)**(2*self.counteval/par.lam))
-                < 2 + 4./(N+1))  # should be smaller than 2 + ...
+                # should be smaller than 2 + ...
+                < 2 + 4./(N+1))  
         self.pc = (1 - par.cc)*self.pc + ccn*hsig*y
 
         # Adapt covariance matrix C
         # minor adjustment for the variance loss from hsig
         c1a = par.c1*(1 - (1-hsig**2)*par.cc*(2-par.cc))
-        self.C = self.C*(1 - c1a - par.cmu * np.sum(par.weights)) # C *= 1 - c1 - cmu * sum(w)
+        # C *= 1 - c1 - cmu * sum(w)
+        self.C *= (1 - c1a - par.cmu * np.sum(par.weights)) 
         self.C += par.c1*np.outer(self.pc, self.pc)
-        for k, wk in enumerate(par.weights):  # so-called rank-mu update
-            if wk < 0:  # guaranty positive definiteness
+
+        # so-called rank-mu update
+        for k, wk in enumerate(par.weights):  
+            # guaranty positive definiteness
+            if wk < 0:  
                 wk *= N * self.sigma**2 / \
                     np.sum((invsqrt @ xvals[k] - xold)**2)
             self.C += np.outer(xvals[k]-xold, xvals[k] -
@@ -216,8 +225,8 @@ class CMAES(object):  # could also inherit from object
             return 'frtol of %1.1e.' %self.params.frtol
         if self.sigma * np.max(self.eigenvalues)**0.5 < self.params.xtol:
             return 'xtol of %1.1e.' %self.params.xtol
-        if self.counteval > self.maxfevals:
-            return 'maxfev of %1.1e.' %self.maxfevals
+        if self.counteval > self.maxfev:
+            return 'maxfev of %1.1e.' %self.maxfev
 
         return False
 
