@@ -205,8 +205,11 @@ class CMAES(object):  # could also inherit from object
         cn, sum_square_ps = par.cs / par.damps, np.sum(self.ps**2)
         self.sigma_shadow = self.sigma * np.exp(np.minimum(1, cn * (sum_square_ps / self.params.ndim - 1) / 2))
 
-        if self.params.maxsigma is not None:
-            self.sigma = np.minimum(self.sigma_shadow, self.params.maxsigma)
+        if self.sigma_shadow*np.max(np.diagonal(self.C)**0.5) > self.params.maxsigma:
+            self.sigma = self.params.maxsigma / np.max(np.diagonal(self.C)**0.5)
+        else:
+            self.sigma = self.sigma_shadow
+
 
     def stop(self):
         """return satisfied termination conditions in a dictionary,
@@ -268,7 +271,7 @@ class CMAES(object):  # could also inherit from object
             info_str = str(self.counteval).rjust(5) + ': ' + ' %6.1e %7.0e %7.0e  %8.8e ' % (np.linalg.cond(self.C)**0.5, self.sigma*np.min(diag_sqrt), self.sigma*np.max(diag_sqrt), self.fvals[0])
 
             if self.sigma != self.sigma_shadow:
-                info_str += "[burn-in: %0.2f, rejecting %s%%]" %(self.sigma_shadow, int((1-1/self.mean_attm)*100))
+                info_str += "[burn-in: %0.2f/%0.2f, failing %s%%]" %(self.sigma, self.sigma_shadow, int((1-1/self.mean_attm)*100))
                 self.print_next = True
             else:
                 info_str += " (%02d:%02d)" %divmod(time.time() - self.stime, 60) 
