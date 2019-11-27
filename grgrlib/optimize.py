@@ -36,7 +36,7 @@ class CMAESParameters(object):
     """static "internal" parameter setting for `CMAES`
     """
 
-    def __init__(self, ndim, popsize, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=True, scaled=False):
+    def __init__(self, ndim, popsize, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=True, scaled=False, cp_rule=None):
         """Set static, fixed "strategy" parameters.
 
         Parameters
@@ -70,10 +70,12 @@ class CMAESParameters(object):
         self.xtol = xtol or 1e-8
 
         self.ndim = ndim
+        ## chaospy rule
+        self.rule = cp_rule or 'S'
 
-        # Strategy parameter setting: Selection
+        ## strategy parameter setting for selection
         self.lam = popsize or 4 + int(3*np.log(ndim))
-        # number of parents/points/solutions for recombination
+        ## set number of parents/points/solutions for recombination
         self.mu = int(self.lam / 2)
 
         self.maxfev = maxfev or 100*self.lam + 150*(ndim+3)**2*self.lam**.5
@@ -195,6 +197,12 @@ class CMAES(object):
 
         # define bijection function
         self.tfunc = (lambda x: np.log(1/x - 1)) if biject else (lambda x: x)
+        # define bijection function
+        try:
+            import chaospy
+            self.rand = lambda size: chaospy.Normal(0, 1).sample(size=size)
+        except ModuleNotFoundError:
+            self.rand = lambda size: np.random.normal(0, 1, size=size, rule=self.rule)
 
         # initialize dynamic state variables
         self.sigma = self.tfunc(.5-sigma) if biject else sigma
@@ -221,8 +229,7 @@ class CMAES(object):
         self.invsqrt = np.linalg.inv(np.linalg.cholesky(self.C))
 
         # potentially use low-discrepancy series here
-        z = self.sigma * self.eigenvalues**0.5 * \
-            np.random.normal(0, 1, size=(par.lam, par.ndim))
+        z = self.sigma * self.eigenvalues**0.5 * self.rand(size=(par.lam, par.ndim))
         y = self.eigenbasis @ z.T
         xs = self.xmean + y.T
 
