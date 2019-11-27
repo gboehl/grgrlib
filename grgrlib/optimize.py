@@ -6,6 +6,14 @@ import time
 import numpy as np
 from grgrlib import map2arr
 
+def tfunc(x, func, punc=None):
+    punc = punc or (lambda x: np.sum(x**4))
+    xt = x.copy()
+    xt[x<0] = 0
+    xt[x>1] = 1
+
+    return func(xt) + punc(x[x<0]) + punc(x[x>1] + 1)
+
 
 def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, maxfev=None, biject=False, verb_disp=100, verb_save=1000, **args):
     """UI access point to `CMAES`
@@ -15,6 +23,8 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, maxfev=None, bi
 
     es.bfunc = (lambda x: 1/(1 + np.exp(x))) if biject else (lambda x: x)
     es.objective_fct = lambda x: objective_fct(es.bfunc(x))
+    # es.bfunc = lambda x: x
+    # es.objective_fct = lambda x: tfunc(x, objective_fct)
 
     es.pool = pool
     es.stime = time.time()
@@ -36,7 +46,7 @@ class CMAESParameters(object):
     """static "internal" parameter setting for `CMAES`
     """
 
-    def __init__(self, ndim, popsize, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=True, scaled=False, cp_rule=None):
+    def __init__(self, ndim, popsize, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=True, scaled=False, ld_rule=None):
         """Set static, fixed "strategy" parameters.
 
         Parameters
@@ -71,7 +81,7 @@ class CMAESParameters(object):
 
         self.ndim = ndim
         ## chaospy rule
-        self.rule = cp_rule or 'S'
+        self.rule = 'L' if ld_rule is None else ld_rule
 
         ## strategy parameter setting for selection
         self.lam = popsize or 4 + int(3*np.log(ndim))
@@ -197,16 +207,22 @@ class CMAES(object):
 
         # define bijection function
         self.tfunc = (lambda x: np.log(1/x - 1)) if biject else (lambda x: x)
-        # define bijection function
+
+        ## use low-discrepancy series
         try:
+            if not self.params.rule:
+                raise ModuleNotFoundError()
             import chaospy
             self.rand = lambda size: chaospy.MvNormal(np.zeros(size[1]), np.eye(size[1])).sample(size=size[0], rule=self.params.rule).T
         except ModuleNotFoundError:
             self.rand = lambda size: np.random.normal(0, 1, size=size)
+        # self.rand = lambda size: np.random.normal(0, 1, size=size)
 
         # initialize dynamic state variables
         self.sigma = self.tfunc(.5-sigma) if biject else sigma
         self.xmean = self.tfunc(xstart)
+        # self.sigma = sigma
+        # self.xmean = xstart.copy()
 
         # initialize evolution path for C
         self.pc = np.zeros(N)
