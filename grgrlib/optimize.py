@@ -200,9 +200,9 @@ class CMAES(object):
         # define bijection function
         try:
             import chaospy
-            self.rand = lambda size: chaospy.Normal(0, 1).sample(size=size)
+            self.rand = lambda size: chaospy.MvNormal(np.zeros(size[1]), np.eye(size[1])).sample(size=size[0], rule=self.params.rule).T
         except ModuleNotFoundError:
-            self.rand = lambda size: np.random.normal(0, 1, size=size, rule=self.rule)
+            self.rand = lambda size: np.random.normal(0, 1, size=size)
 
         # initialize dynamic state variables
         self.sigma = self.tfunc(.5-sigma) if biject else sigma
