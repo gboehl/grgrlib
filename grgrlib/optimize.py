@@ -3,16 +3,18 @@
 
 import tqdm
 import time
-from sys import stdout
 import numpy as np
-from grgrlib import map2arr, timeprint
+from grgrlib import map2arr
 
 
-def cmaes(objective_fct, xstart, sigma, popsize=None, mueff=None, pool=None, maxfev=None, verb_disp=100, verb_save=1000, **args):
+def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, maxfev=None, biject=False, verb_disp=100, verb_save=1000, **args):
+    """UI access point to `CMAES`
+    """
 
-    es = CMAES(xstart, sigma, mueff=mueff, maxfev=maxfev, popsize=int(popsize), **args)
+    es = CMAES(xstart, sigma, popsize=popsize, biject=biject, **args)
 
-    es.objective_fct = objective_fct
+    es.objective_fct = (lambda x: objective_fct(
+        1/(1+np.exp(x)))) if biject else objective_fct
     es.pool = pool
     es.stime = time.time()
 
@@ -21,7 +23,7 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, mueff=None, pool=None, max
         es.disp(verb_disp)
 
     # do not print by default to allow silent verbosity
-    if verb_disp:  
+    if verb_disp:
 
         es.disp(1)
         print('[cma-es:]'.ljust(15, ' ') + 'termination by ' + es.stop())
@@ -31,212 +33,271 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, mueff=None, pool=None, max
 
 class CMAESParameters(object):
     """static "internal" parameter setting for `CMAES`
-
     """
 
-    def __init__(self, N, popsize, mueff=None, maxsigma=None, fatol=None, frtol=None, xtol=None):
+    def __init__(self, ndim, popsize, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=True, scaled=True):
+        """Set static, fixed "strategy" parameters.
 
-        self.ndim = N
-        self.maxsigma = maxsigma
-        self.chiN = (1 - 1. / (4 * N) + 1. / (21 * N**2))
+        Parameters
+        ---------- 
+        ndim : int
+            Dimensionality of the problem.
+        popsize : int
+            Population size.
+        cc : float, optional
+            Backward time horizon for the evolution path (automatically assigned by default) 
+        cs : float, optional
+            Makes partly up for the small variance loss in case the indicator is zero (automatically assigned by default) 
+        c1 : float, optional
+            Learning rate for the rank-one update of the covariance matrix (automatically assigned by default)
+        cmu : float, optional
+            Learning rate for the rank-μ update of the covariance matrix (automatically assigned by default)
+        fatol : float, optional
+            Absolute tolerance of function value (defaults to 1e-8)
+        frtol : float, optional
+            Relative tolerance of function value (defaults to 1e-8)
+        xtol : float, optional
+            Absolute tolerance of solution values (defaults to 1e-8)
+        active : bool, optional
+            Whether to use aCMA-Es, a modern variant (True by default)
+        scaled : bool, optional
+            Whether to adjust `cs` to automatically deal with large populations (True by default)
+        """
+
         self.fatol = fatol or 1e-8
         self.frtol = frtol or 1e-8
         self.xtol = xtol or 1e-8
 
-        self.default_popsize = int(4 + 3*np.log(N))
-        self.lam = popsize or self.default_popsize
+        self.ndim = ndim
 
+        # Strategy parameter setting: Selection
+        self.lam = popsize or 4 + int(3*np.log(ndim))
         # number of parents/points/solutions for recombination
         self.mu = int(self.lam / 2)
 
-        weights = np.zeros(self.lam)
-        weights[:self.mu] = np.log(self.lam / 2 + 0.2) - np.log(np.arange(self.mu) + 1)
+        self.maxfev = maxfev or 100*self.lam + 150*(ndim+3)**2*self.lam**.5
 
-        self.weights = weights / np.sum(weights)
-        # variance-effectiveness of sum w_i x_i
-        self.mueff = mueff or np.sum(self.weights)**2 / np.sum(self.weights**2)
+        if active:
+            self.weights, self.mueff = self.recombination_weights()
+        else:
+            # set non-negative recombination weights "manually"
+            weights = np.zeros(self.lam)
+            weights[:self.mu] = np.log(
+                self.lam / 2 + 0.5) - np.log(np.arange(self.mu) + 1)
+            # sum is one now
+            self.weights = weights/np.sum(weights[:self.mu])
+            # variance-effectiveness of sum w_i x_i
+            self.mueff = np.sum(
+                self.weights[:self.mu])**2 / np.sum(self.weights[:self.mu]**2)
 
-        print('[cma-es:]'.ljust(15, ' ') + 
-              '(%d' % (self.mu) + ',%d' % (self.lam) + ')-' + 'CMA-ES' + 
-              ' (mu_w=%2.1f,w_1=%d%%)' % (self.mueff, int(100 * self.weights[0])) + 
-              ' in %d dimensions (seed=%s)' % (N, np.random.get_state()[1][0]))
-
-        # Strategy parameter setting: Adaptation
+        # strategy parameter setting for adaptation
         # time constant for cumulation for C
-        self.cc = (4 + self.mueff/N) / (N + 4 + 2*self.mueff/N)
-        # time constant for cumulation for sigma control
-        self.cs = (self.mueff + 2) / (N + self.mueff + 5)
-        # learning rate for rank-one update of C
-        self.c1 = 2 / ((N + 1.3)**2 + self.mueff)
-        # and for rank-mu update
-        self.cmu = np.minimum(1 - self.c1, 2 * (self.mueff - 2 + 1/self.mueff) /((N + 2)**2 + self.mueff))  
-        # damping for sigma, usually close to 1
-        self.damps = 2 * self.mueff/self.lam + 0.3 + self.cs  
+        cc_orig = (4 + self.mueff/ndim) / (ndim+4 + 2 * self.mueff/ndim)
+        self.cc = cc_orig if cc is None else cc
+
+        # lam ~ 4*mueff
+        # lam ~ 4 + int(3*np.log(ndim))
+
+        # define time constant for cumulation for sigma control
+        if scaled:
+            # 4*mueff \approx lam = 4+int(3*log(ndim)) \approx 4*(1+log(ndim))
+            cs_orig = (np.log(ndim) + 3) / (ndim + self.mueff + 5)
+        else:
+            cs_orig = (self.mueff + 2) / (ndim + self.mueff + 5)
+        self.cs = cs_orig if cs is None else cs
+
+        # define learning rate of rank-one update
+        c1_orig = 2 / ((ndim + 1.3)**2 + self.mueff)
+        self.c1 = c1_orig if c1 is None else c1
+
+        # define learning rate of rank-mu update
+        cmu_orig = np.minimum(
+            1 - self.c1, 2 * (self.mueff - 2 + 1/self.mueff) / ((ndim + 2)**2 + self.mueff))
+        self.cmu = cmu_orig if cmu is None else cmu
+
+        # define damping for sigma (usually close to 1)
+        self.damps = 2 * self.mueff/self.lam + 0.3 + self.cs
+
+        if active:
+            self.finalize_weights()
+
+        prt_str0 = '(%d' % (self.mu) + ',%d' % (self.lam) + ')-' + 'CMA-ES'
+        prt_str0 += ' (mu_w=%2.1f,w_1=%d%%)' % (self.mueff,
+                                                int(100 * self.weights[0]))
+        prt_str0 += ' in %d dimensions (seed=%s)' % (ndim,
+                                                     np.random.get_state()[1][0])
+
+        prt_str1 = '[cc=%1.2f' % self.cc
+        prt_str1 += '(%1.2f)' % cc_orig if cc_orig != self.cc else ''
+        prt_str1 += ', cs=%1.2f' % self.cs
+        prt_str1 += '(%1.2f)' % cs_orig if cs_orig != self.cs else ''
+        prt_str1 += ', c1=%1.2f' % self.c1
+        prt_str1 += '(%1.2f)' % c1_orig if c1_orig != self.c1 else ''
+        prt_str1 += ', cmu=%1.2f' % self.cmu
+        prt_str1 += '(%1.2f)]' % cmu_orig if cmu_orig != self.cmu else ']'
+        print('[cma-es:]'.ljust(15, ' ') + prt_str0)
+        print(''.ljust(15, ' ') + prt_str1)
+
+    def recombination_weights(self):
+
+        weights = np.log(self.lam/2 + .5) - np.log(np.arange(self.lam)+1)
+
+        mu = np.sum(weights > 0)
+
+        weights /= np.sum(weights[:mu])
+
+        # variance-effectiveness of sum^mu w_i x_i
+        mueff = 1 / np.sum(weights[:mu]**2)
+        sum_neg = np.sum(weights[mu:])
+
+        if sum_neg != 0:
+            weights[mu:] /= -sum_neg
+
+        return weights, mueff
+
+    def finalize_weights(self):
+
+        if self.weights[-1] < 0:
+            if self.cmu > 0:
+
+                value = np.abs(1 + self.c1 / self.cmu)
+
+                if self.weights[-1] < 0:
+                    factor = np.abs(value / np.sum(self.weights[self.mu:]))
+                    self.weights[self.mu:] *= factor
+
+                value = np.abs((1 - self.c1 - self.cmu) / self.cmu / self.ndim)
+
+                if np.sum(self.weights[self.mu:]) < -value:  # nothing to limit
+                    factor = np.abs(value / np.sum(self.weights[self.mu:]))
+                    if factor < 1:
+                        self.weights[self.mu:] *= factor
+
+            sum_neg = np.sum(self.weights[self.mu:])
+            mueffminus = sum_neg**2 / \
+                np.sum(self.weights[self.mu:]**2) if sum_neg else 0
+            value = np.abs(1 + 2 * mueffminus / (self.mueff + 2))
+
+            if sum_neg < -value:  # nothing to limit
+                factor = np.abs(value / sum_neg)
+                if factor < 1:
+                    self.weights[self.mu:] *= factor
+
+        return
 
 
-class CMAES(object):  # could also inherit from object
-    def __init__(self, xstart, sigma, popsize=None, mueff=None, maxfev=None, pbar_sensitivity=.99, **args):
-        """Instantiate `CMAES` object instance using `xstart` and `sigma`.
+class CMAES(object):
 
-        Parameters
-        ----------
-            `xstart`: `list`
-                of numbers (like ``[3, 2, 1.2]``), initial
-                solution vector
-            `sigma`: `float`
-                initial step-size (standard deviation in each coordinate)
-            `popsize`: `int` or `str`
-                population size, number of candidate samples per iteration
-            `maxfev`: `int` or `str`
-                maximal number of function evaluations, a string is
-                evaluated with ``N`` as search space dimension
+    def __init__(self, xstart, sigma, popsize, biject, **args):
 
-        Details: this method initializes the dynamic state variables and
-        creates a `CMAESParameters` instance for static parameters.
-        """
-        # process some input parameters and set static parameters
-        # number of objective variables/problem dimension
-        N = len(xstart)  
-        self.params = CMAESParameters(N, popsize, mueff, **args)
-        popsize = self.params.default_popsize
-        self.maxfev = maxfev or 100*popsize + 150*(N + 3)**2*popsize**0.5
-        self.show_pbar = pbar_sensitivity < 1
-        self.pbar_sensitivity = pbar_sensitivity
-        self.print_next = True
+        # number of dimensions
+        N = len(xstart)
+        self.params = CMAESParameters(N, popsize, **args)
 
-        # initializing dynamic state variables
-        # initial point, distribution mean, a copy
-        self.xmean = np.array(xstart)
-        self.sigma = sigma
-        # evolution path for C
-        self.pc = np.zeros(N)  
-        # and for sigma
-        self.ps = np.zeros(N)  
+        # define bijection function
+        tfunc = (lambda x: np.log(1/x - 1)) if biject else (lambda x: x)
+
+        # initialize dynamic state variables
+        self.sigma = tfunc(.5-sigma) if biject else sigma
+        self.xmean = tfunc(xstart)
+
+        # initialize evolution path for C
+        self.pc = np.zeros(N)
+        # initialize evolution path for sigma
+        self.ps = np.zeros(N)
         self.C = np.eye(N)
-        # countiter should be equal to counteval / lam
-        self.counteval = 0  
+        self.counteval = 0
         self.best = BestSolution()
+        self.biject = biject
 
     def run(self):
         """update the evolution paths and the distribution parameters m,
         sigma, and C within CMA-ES.
-
-        Parameters
-        ----------
-            `arx`: `list` of "row vectors"
-                a list of candidate solution vectors, presumably from
-                calling `ask`. ``arx[k][i]`` is the i-th element of
-                solution vector k.
-            `fitvals`: `list`
-                the corresponding objective function values, to be
-                minimised
         """
 
-        self.eigenvalues, self.eigenbasis = np.linalg.eigh(self.C)  # O(N**3)
-
-        wrap = tqdm.tqdm if self.show_pbar else lambda x, **args: x
-
-        def func(s):
-
-            np.random.seed(s)
-
-            f = np.inf
-            nattm = 0
-
-            while np.isinf(f):
-                z = self.sigma * self.eigenvalues**0.5 * np.random.normal(size=self.params.ndim)
-                y = self.eigenbasis @ z
-                x = self.xmean + y
-                f = self.objective_fct(x)
-                nattm += 1
-
-            return f, x, nattm
-
-        seeds = np.random.randint(2**32-2, size=self.params.lam)
-        res = self.pool.imap(func, seeds)
-        res = wrap(res, total=self.params.lam, unit='sample(s)', dynamic_ncols=True)
-
-        fvals, xvals, nattms = map2arr(res)
-        self.mean_attm = np.mean(nattms) 
-        self.show_pbar = 1 - 1/self.mean_attm >= self.pbar_sensitivity
-
-        # bookkeeping and convenience short cuts
-        # evaluations used within tell
-        self.counteval += len(fvals)  
         par = self.params
-        # not a copy, xmean is assigned anew later
-        xold = self.xmean  
+
+        self.eigenvalues, self.eigenbasis = np.linalg.eigh(self.C)
+        self.condition_number = np.linalg.cond(self.C)
+        self.invsqrt = np.linalg.inv(np.linalg.cholesky(self.C))
+
+        # potentially use low-discrepancy series here
+        z = self.sigma * self.eigenvalues**0.5 * \
+            np.random.normal(0, 1, size=(par.lam, par.ndim))
+        y = self.eigenbasis @ z.T
+        xs = self.xmean + y.T
+
+        res = self.pool.imap(self.objective_fct, xs)
+        fs = map2arr(res)
+
+        self.counteval += len(fs)
+        N = len(self.xmean)
+        xold = self.xmean  # not a copy, xmean is assigned anew later
 
         # sort by fitness
-        xvals = np.array(xvals)[np.argsort(fvals)]
-        # used for termination and display only
-        self.fvals = np.sort(fvals)  
-        self.best.update(xvals[0], self.fvals[0], self.counteval)
+        xs = xs[fs.argsort()]
+        self.fs = np.sort(fs)
+        self.best.update(xs[0], self.fs[0], self.counteval)
 
-        # recombination, compute new weighted mean value
-        self.xmean = xvals.T @ par.weights
+        # recombination: compute new weighted mean value
+        self.xmean = xs[0:par.mu].T @ par.weights[:par.mu]
 
-        invsqrt = np.linalg.inv(np.linalg.cholesky(self.C))
-
-        # Cumulation: update evolution paths
+        # cumulation: update evolution paths
         y = self.xmean - xold
-        # z = C**(-1/2) * (xnew - xold)
-        z = invsqrt @ y  
+        z = self.invsqrt @ y
         csn = (par.cs * (2 - par.cs) * par.mueff)**0.5 / self.sigma
+        # update evolution path
         self.ps = (1 - par.cs) * self.ps + csn * z
+
         ccn = (par.cc * (2 - par.cc) * par.mueff)**0.5 / self.sigma
         # turn off rank-one accumulation when sigma increases quickly
-        hsig = (np.sum(self.ps**2) / self.params.ndim  # ||ps||^2 / N is 1 in expectation
-                # account for initial value of ps
-                / (1-(1-par.cs)**(2*self.counteval/par.lam))
-                # should be smaller than 2 + ...
-                < 2 + 4./(self.params.ndim+1))  
-        self.pc = (1 - par.cc)*self.pc + ccn*hsig*y
+        hsig = par.cs and (np.sum(self.ps**2) / N
+                           # account for initial value of ps
+                           / (1-(1-par.cs)**(2*self.counteval/par.lam))
+                           < 2 + 4/(N+1))
 
-        # Adapt covariance matrix C
+        self.pc = (1 - par.cc) * self.pc + ccn * hsig * y
+
+        # covariance matrix adaption
         # minor adjustment for the variance loss from hsig
-        c1a = par.c1*(1 - (1-hsig**2)*par.cc*(2-par.cc))
-        # C *= 1 - c1 - cmu * sum(w)
-        self.C *= 1 - c1a - par.cmu
-        self.C += par.c1*np.outer(self.pc, self.pc)
-        self.C += par.cmu/self.sigma**2 * (xvals-xold).T @ np.diag(par.weights) @ (xvals-xold) 
+        c1a = par.c1 * (1 - (1-hsig**2) * par.cc * (2-par.cc))
+        self.C *= 1 - c1a - par.cmu * np.sum(par.weights)
+        # rank-one update
+        self.C += par.c1 * np.outer(self.pc, self.pc)
 
-        # Adapt step-size sigma
+        # rank-mu update
+        for k, wk in enumerate(par.weights):
+            # guaranty positive definiteness
+            if wk < 0:
+                mahalano = np.sum((self.invsqrt @ (xs[k] - xold))**2)
+                wk *= N * self.sigma**2 / mahalano
+            self.C += wk * par.cmu / self.sigma**2 * \
+                np.outer(xs[k] - xold, xs[k] - xold)
+
+        # adapt step-size
         cn, sum_square_ps = par.cs / par.damps, np.sum(self.ps**2)
-        self.sigma_shadow = self.sigma * np.exp(np.minimum(1, cn * (sum_square_ps / self.params.ndim - 1) / 2))
-
-        if self.sigma_shadow*np.max(np.diagonal(self.C)**0.5) > self.params.maxsigma:
-            self.sigma = self.params.maxsigma / np.max(np.diagonal(self.C)**0.5)
-        else:
-            self.sigma = self.sigma_shadow
-
+        self.sigma *= np.exp(np.minimum(1, cn * (sum_square_ps / N - 1) / 2))
 
     def stop(self):
-        """return satisfied termination conditions in a dictionary,
-
-        generally speaking like ``{'termination_reason':value, ...}``,
-        for example ``{'tolfun':1e-12}``, or the empty `dict` ``{}``.
+        """Check termination criteria and return string.
         """
 
-        if not self.counteval:
+        if not self.counteval or np.isinf(self.fs).any():
             return False
 
-        if len(self.fvals) > 1 and self.fvals[-1] - self.fvals[0] < self.params.fatol:
-            return 'fatol of %1.0e.' %self.params.fatol
-        if len(self.fvals) > 1 and self.fvals[-1]/self.fvals[0] - 1 < self.params.frtol:
-            return 'frtol of %1.0e.' %self.params.frtol
+        if len(self.fs) > 1 and self.fs[-1] - self.fs[0] < self.params.fatol:
+            return 'fatol of %1.0e.' % self.params.fatol
+        if len(self.fs) > 1 and self.fs[-1]/self.fs[0] - 1 < self.params.frtol:
+            return 'frtol of %1.0e.' % self.params.frtol
         if self.sigma * np.max(self.eigenvalues)**0.5 < self.params.xtol:
-            return 'xtol of %1.0e.' %self.params.xtol
-        if self.counteval > self.maxfev:
-            return 'maxfev of %1.0e.' %self.maxfev
+            return 'xtol of %1.0e.' % self.params.xtol
+        if self.counteval > self.params.maxfev:
+            return 'maxfev of %1.0e.' % self.params.maxfev
 
         return False
 
     @property
     def result(self):
-        """the `tuple` ``(xbest, f(xbest), evaluations_xbest, evaluations,
-        iterations, xmean, stds)``
-        """
 
         return (self.best.x,
                 self.best.f,
@@ -244,10 +305,10 @@ class CMAES(object):  # could also inherit from object
                 self.counteval,
                 int(self.counteval / self.params.lam),
                 self.xmean,
-                self.sigma * np.diagonal(self.C)**.5)
+                self.sigma * np.diag(self.C)**0.5)
 
     def disp(self, verb_modulo=1):
-        """`print` some iteration info to `stdout`
+        """print well-formated iteration info 
         """
 
         if verb_modulo is None:
@@ -258,39 +319,34 @@ class CMAES(object):  # could also inherit from object
 
         do_print = False
         do_print |= iteration <= 2
-        do_print |= iteration % verb_modulo < 1 
-        do_print |= self.sigma != self.sigma_shadow
-        do_print |= self.print_next
+        do_print |= iteration % verb_modulo < 1
 
         if iteration == 1 or iteration % (10 * verb_modulo) < 1:
-            print('evals: ax-ratio   std (min/max)     f-value     t(mm:ss)')
+            print('evals:  sigma   ax-ratio   std (min/max)     f-value     t(mm:ss)')
 
         if do_print:
-            self.print_next = False
+            frac_inf = np.sum(np.isinf(self.fs))
             diag_sqrt = np.diagonal(self.C)**0.5
-            info_str = str(self.counteval).rjust(5) + ': ' + ' %6.1e %7.0e %7.0e  %8.8e ' % (np.linalg.cond(self.C)**0.5, self.sigma*np.min(diag_sqrt), self.sigma*np.max(diag_sqrt), self.fvals[0])
-
-            if self.sigma != self.sigma_shadow:
-                info_str += "[burn-in: %0.2f/%0.2f, failing %s%%]" %(self.sigma, self.sigma_shadow, int((1-1/self.mean_attm)*100))
-                self.print_next = True
-            else:
-                info_str += " (%02d:%02d)" %divmod(time.time() - self.stime, 60) 
-
+            info_str = str(self.counteval).rjust(5) + ': ' + ' %2.1e  %6.1e %7.0e %7.0e  %8.8e ' % (self.sigma,
+                                                                                                    np.linalg.cond(self.C)**0.5, self.sigma*np.min(diag_sqrt), self.sigma*np.max(diag_sqrt), self.fs[0])
+            info_str += ' (%02d:%02d)' % divmod(time.time() - self.stime, 60)
+            info_str += ' -> %02d%% inf' % (frac_inf /
+                                            self.params.lam*100) if frac_inf else ''
 
             print(info_str)
-            stdout.flush()
 
 
 class BestSolution(object):
-    """container to keep track of the best solution seen"""
+    """Container to keep track of the best solution seen.
+    """
 
     def __init__(self, x=None, f=None, evals=None):
-        """take `x`, `f`, and `evals` to initialize the best solution
+        """Take `x`, `f`, and `evals` to initialize the best solution.
         """
         self.x, self.f, self.evals = x, f, evals
 
     def update(self, x, f, evals=None):
-        """update the best solution if ``f < self.f``
+        """Update the best solution if ``f < self.f``.
         """
         if self.f is None or f < self.f:
             self.x = x
@@ -300,5 +356,6 @@ class BestSolution(object):
 
     @property
     def all(self):
-        """``(x, f, evals)`` of the best seen solution"""
+        """``(x, f, evals)`` of the best seen solution.
+        """
         return self.x, self.f, self.evals
