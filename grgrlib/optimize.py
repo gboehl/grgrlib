@@ -13,8 +13,9 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, maxfev=None, bi
 
     es = CMAES(xstart, sigma, popsize=popsize, biject=biject, **args)
 
-    es.objective_fct = (lambda x: objective_fct(
-        1/(1+np.exp(x)))) if biject else objective_fct
+    es.bfunc = (lambda x: 1/(1 + np.exp(x))) if biject else (lambda x: x)
+    es.objective_fct = lambda x: objective_fct(es.bfunc(x))
+
     es.pool = pool
     es.stime = time.time()
 
@@ -92,18 +93,16 @@ class CMAESParameters(object):
 
         # strategy parameter setting for adaptation
         # time constant for cumulation for C
-        cc_orig = (4 + self.mueff/ndim) / (ndim+4 + 2 * self.mueff/ndim)
-        self.cc = cc_orig if cc is None else cc
-
-        # lam ~ 4*mueff
-        # lam ~ 4 + int(3*np.log(ndim))
 
         # define time constant for cumulation for sigma control
         if scaled:
             # 4*mueff \approx lam = 4+int(3*log(ndim)) \approx 4*(1+log(ndim))
+            cc_orig = (4 + self.mueff/ndim) / (ndim + 4 + 2 * np.log(ndim)/ndim)
             cs_orig = (np.log(ndim) + 3) / (ndim + self.mueff + 5)
         else:
+            cc_orig = (4 + self.mueff/ndim) / (ndim+4 + 2 * self.mueff/ndim)
             cs_orig = (self.mueff + 2) / (ndim + self.mueff + 5)
+        self.cc = cc_orig if cc is None else cc
         self.cs = cs_orig if cs is None else cs
 
         # define learning rate of rank-one update
@@ -221,25 +220,18 @@ class CMAES(object):
         self.condition_number = np.linalg.cond(self.C)
         self.invsqrt = np.linalg.inv(np.linalg.cholesky(self.C))
 
-        done = False
-        lcnt = 0
+        # potentially use low-discrepancy series here
+        z = self.sigma * self.eigenvalues**0.5 * \
+            np.random.normal(0, 1, size=(par.lam, par.ndim))
+        y = self.eigenbasis @ z.T
+        xs = self.xmean + y.T
 
-        while not done:
+        res = self.pool.imap(self.objective_fct, xs)
+        fs = map2arr(res)
 
-            # potentially use low-discrepancy series here
-            z = self.sigma * self.eigenvalues**0.5 * \
-                np.random.normal(0, 1, size=(par.lam, par.ndim))
-            y = self.eigenbasis @ z.T
-            xs = self.xmean + y.T
-
-            res = self.pool.imap(self.objective_fct, xs)
-            fs = map2arr(res)
-
-            ## loop if no sample is returned
-            done |= not np.isinf(fs).all()
-            lcnt += 1
-            if lcnt > 9:
-                raise ValueError('Sample returns infs only.')
+        ## interrupt if scewed
+        if np.isinf(fs).all():
+            raise ValueError('Sample returns infs only.')
 
         self.counteval += len(fs)
         N = len(self.xmean)
@@ -310,12 +302,12 @@ class CMAES(object):
     @property
     def result(self):
 
-        return (self.tfunc(self.best.x),
+        return (self.bfunc(self.best.x),
                 self.best.f,
                 self.best.evals,
                 self.counteval,
                 int(self.counteval / self.params.lam),
-                self.tfunc(self.xmean),
+                self.bfunc(self.xmean),
                 self.sigma * np.diag(self.C)**0.5)
 
     def disp(self, verb_modulo=1):
