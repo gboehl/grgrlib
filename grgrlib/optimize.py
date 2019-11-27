@@ -35,7 +35,7 @@ class CMAESParameters(object):
     """static "internal" parameter setting for `CMAES`
     """
 
-    def __init__(self, ndim, popsize, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=True, scaled=True):
+    def __init__(self, ndim, popsize, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=True, scaled=False):
         """Set static, fixed "strategy" parameters.
 
         Parameters
@@ -61,7 +61,7 @@ class CMAESParameters(object):
         active : bool, optional
             Whether to use aCMA-Es, a modern variant (True by default)
         scaled : bool, optional
-            Whether to adjust `cs` to automatically deal with large populations (True by default)
+            Whether to adjust `cs` to automatically deal with large populations (False by default)
         """
 
         self.fatol = fatol or 1e-8
@@ -195,11 +195,11 @@ class CMAES(object):
         self.params = CMAESParameters(N, popsize, **args)
 
         # define bijection function
-        tfunc = (lambda x: np.log(1/x - 1)) if biject else (lambda x: x)
+        self.tfunc = (lambda x: np.log(1/x - 1)) if biject else (lambda x: x)
 
         # initialize dynamic state variables
-        self.sigma = tfunc(.5-sigma) if biject else sigma
-        self.xmean = tfunc(xstart)
+        self.sigma = self.tfunc(.5-sigma) if biject else sigma
+        self.xmean = self.tfunc(xstart)
 
         # initialize evolution path for C
         self.pc = np.zeros(N)
@@ -221,18 +221,29 @@ class CMAES(object):
         self.condition_number = np.linalg.cond(self.C)
         self.invsqrt = np.linalg.inv(np.linalg.cholesky(self.C))
 
-        # potentially use low-discrepancy series here
-        z = self.sigma * self.eigenvalues**0.5 * \
-            np.random.normal(0, 1, size=(par.lam, par.ndim))
-        y = self.eigenbasis @ z.T
-        xs = self.xmean + y.T
+        done = False
+        lcnt = 0
 
-        res = self.pool.imap(self.objective_fct, xs)
-        fs = map2arr(res)
+        while not done:
+
+            # potentially use low-discrepancy series here
+            z = self.sigma * self.eigenvalues**0.5 * \
+                np.random.normal(0, 1, size=(par.lam, par.ndim))
+            y = self.eigenbasis @ z.T
+            xs = self.xmean + y.T
+
+            res = self.pool.imap(self.objective_fct, xs)
+            fs = map2arr(res)
+
+            ## loop if no sample is returned
+            done |= not np.isinf(fs).all()
+            lcnt += 1
+            if lcnt > 9:
+                raise ValueError('Sample returns infs only.')
 
         self.counteval += len(fs)
         N = len(self.xmean)
-        xold = self.xmean  # not a copy, xmean is assigned anew later
+        xold = self.xmean 
 
         # sort by fitness
         xs = xs[fs.argsort()]
@@ -299,12 +310,12 @@ class CMAES(object):
     @property
     def result(self):
 
-        return (self.best.x,
+        return (self.tfunc(self.best.x),
                 self.best.f,
                 self.best.evals,
                 self.counteval,
                 int(self.counteval / self.params.lam),
-                self.xmean,
+                self.tfunc(self.xmean),
                 self.sigma * np.diag(self.C)**0.5)
 
     def disp(self, verb_modulo=1):
@@ -318,7 +329,7 @@ class CMAES(object):
         iteration = self.counteval / self.params.lam
 
         do_print = False
-        do_print |= iteration <= 2
+        do_print |= iteration <= 3
         do_print |= iteration % verb_modulo < 1
 
         if iteration == 1 or iteration % (10 * verb_modulo) < 1:
