@@ -7,6 +7,8 @@ import numpy as np
 from grgrlib import map2arr
 
 def tfunc(x, func, punc=None):
+    """Truncator function (not in use)
+    """
     punc = punc or (lambda x: np.sum(x**4))
     xt = x.copy()
     xt[x<0] = 0
@@ -23,8 +25,6 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, maxfev=None, bi
 
     es.bfunc = (lambda x: 1/(1 + np.exp(x))) if biject else (lambda x: x)
     es.objective_fct = lambda x: objective_fct(es.bfunc(x))
-    # es.bfunc = lambda x: x
-    # es.objective_fct = lambda x: tfunc(x, objective_fct)
 
     es.pool = pool
     es.stime = time.time()
@@ -46,7 +46,7 @@ class CMAESParameters(object):
     """static "internal" parameter setting for `CMAES`
     """
 
-    def __init__(self, ndim, popsize, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=True, scaled=False, ld_rule=None):
+    def __init__(self, ndim, popsize, mu=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=True, autofix=False, ld_rule=None):
         """Set static, fixed "strategy" parameters.
 
         Parameters
@@ -71,8 +71,6 @@ class CMAESParameters(object):
             Absolute tolerance of solution values (defaults to 1e-8)
         active : bool, optional
             Whether to use aCMA-Es, a modern variant (True by default)
-        scaled : bool, optional
-            Whether to adjust `cs` to automatically deal with large populations (False by default)
         """
 
         self.fatol = fatol or 1e-8
@@ -80,54 +78,50 @@ class CMAESParameters(object):
         self.xtol = xtol or 1e-8
 
         self.ndim = ndim
-        ## chaospy rule
-        self.rule = 'L' if ld_rule is None else ld_rule
+        # low-discrepancy rule (chaospy)
+        self.rule = 'H' if ld_rule is None else ld_rule
 
-        ## strategy parameter setting for selection
-        self.lam = popsize or 4 + int(3*np.log(ndim))
-        ## set number of parents/points/solutions for recombination
-        self.mu = int(self.lam / 2)
+        # set strategy parameter for selection
+        def_pop = 4 + int(3*np.log(ndim))
+        self.lam = popsize or def_pop
+        
+        mu = def_pop/2. if autofix else mu
+        # set number of parents/points/solutions for recombination
+        self.mu = mu or int(self.lam / 2)
 
         self.maxfev = maxfev or 100*self.lam + 150*(ndim+3)**2*self.lam**.5
 
         if active:
             self.weights, self.mueff = self.recombination_weights()
         else:
-            # set non-negative recombination weights "manually"
+            # set non-negative recombination weights & normalize them
             weights = np.zeros(self.lam)
-            weights[:self.mu] = np.log(
-                self.lam / 2 + 0.5) - np.log(np.arange(self.mu) + 1)
-            # sum is one now
+            weights[:self.mu] = np.log(self.mu + 0.5) - np.log(np.arange(self.mu) + 1)
             self.weights = weights/np.sum(weights[:self.mu])
             # variance-effectiveness of sum w_i x_i
             self.mueff = np.sum(
                 self.weights[:self.mu])**2 / np.sum(self.weights[:self.mu]**2)
 
-        # strategy parameter setting for adaptation
-        # time constant for cumulation for C
+        # set strategy parameter adaptation:
+        # set time constant for cumulation for COV
+        def_cc = (4 + self.mueff/ndim) / (ndim+4 + 2 * self.mueff/ndim)
+        self.cc = def_cc if cc is None else cc
 
-        # define time constant for cumulation for sigma control
-        if scaled:
-            # 4*mueff \approx lam = 4+int(3*log(ndim)) \approx 4*(1+log(ndim))
-            cc_orig = (4 + self.mueff/ndim) / (ndim + 4 + 2 * np.log(ndim)/ndim)
-            cs_orig = (np.log(ndim) + 3) / (ndim + self.mueff + 5)
-        else:
-            cc_orig = (4 + self.mueff/ndim) / (ndim+4 + 2 * self.mueff/ndim)
-            cs_orig = (self.mueff + 2) / (ndim + self.mueff + 5)
-        self.cc = cc_orig if cc is None else cc
-        self.cs = cs_orig if cs is None else cs
+        # define time constant for cumulation of sigma control
+        def_cs = (self.mueff + 2) / (ndim + self.mueff + 5)
+        self.cs = def_cs if cs is None else cs
 
         # define learning rate of rank-one update
-        c1_orig = 2 / ((ndim + 1.3)**2 + self.mueff)
-        self.c1 = c1_orig if c1 is None else c1
+        def_c1 = 2 / ((ndim + 1.3)**2 + self.mueff)
+        self.c1 = def_c1 if c1 is None else c1
 
         # define learning rate of rank-mu update
-        cmu_orig = np.minimum(
+        def_cmu = np.minimum(
             1 - self.c1, 2 * (self.mueff - 2 + 1/self.mueff) / ((ndim + 2)**2 + self.mueff))
-        self.cmu = cmu_orig if cmu is None else cmu
+        self.cmu = def_cmu if cmu is None else cmu
 
         # define damping for sigma (usually close to 1)
-        self.damps = 2 * self.mueff/self.lam + 0.3 + self.cs
+        self.damps = self.mueff/self.mu + 0.3 + self.cs
 
         if active:
             self.finalize_weights()
@@ -139,25 +133,24 @@ class CMAESParameters(object):
                                                      np.random.get_state()[1][0])
 
         prt_str1 = '[cc=%1.2f' % self.cc
-        prt_str1 += '(%1.2f)' % cc_orig if cc_orig != self.cc else ''
+        prt_str1 += '(%1.2f)' % def_cc if def_cc != self.cc else ''
         prt_str1 += ', cs=%1.2f' % self.cs
-        prt_str1 += '(%1.2f)' % cs_orig if cs_orig != self.cs else ''
+        prt_str1 += '(%1.2f)' % def_cs if def_cs != self.cs else ''
         prt_str1 += ', c1=%1.2f' % self.c1
-        prt_str1 += '(%1.2f)' % c1_orig if c1_orig != self.c1 else ''
+        prt_str1 += '(%1.2f)' % def_c1 if def_c1 != self.c1 else ''
         prt_str1 += ', cmu=%1.2f' % self.cmu
-        prt_str1 += '(%1.2f)]' % cmu_orig if cmu_orig != self.cmu else ']'
+        prt_str1 += '(%1.2f)]' % def_cmu if def_cmu != self.cmu else ']'
         print('[cma-es:]'.ljust(15, ' ') + prt_str0)
         print(''.ljust(15, ' ') + prt_str1)
 
     def recombination_weights(self):
 
-        weights = np.log(self.lam/2 + .5) - np.log(np.arange(self.lam)+1)
+        weights = np.log(self.lam + 1) - np.log(np.arange(self.lam)+1) - np.log(2)
 
         mu = np.sum(weights > 0)
-
         weights /= np.sum(weights[:mu])
 
-        # variance-effectiveness of sum^mu w_i x_i
+        # define variance-effectiveness
         mueff = 1 / np.sum(weights[:mu]**2)
         sum_neg = np.sum(weights[mu:])
 
@@ -179,7 +172,8 @@ class CMAESParameters(object):
 
                 value = np.abs((1 - self.c1 - self.cmu) / self.cmu / self.ndim)
 
-                if np.sum(self.weights[self.mu:]) < -value:  # nothing to limit
+                # if nothing to limit
+                if np.sum(self.weights[self.mu:]) < -value:  
                     factor = np.abs(value / np.sum(self.weights[self.mu:]))
                     if factor < 1:
                         self.weights[self.mu:] *= factor
@@ -189,7 +183,8 @@ class CMAESParameters(object):
                 np.sum(self.weights[self.mu:]**2) if sum_neg else 0
             value = np.abs(1 + 2 * mueffminus / (self.mueff + 2))
 
-            if sum_neg < -value:  # nothing to limit
+            # if nothing to limit
+            if sum_neg < -value:  
                 factor = np.abs(value / sum_neg)
                 if factor < 1:
                     self.weights[self.mu:] *= factor
@@ -208,23 +203,20 @@ class CMAES(object):
         # define bijection function
         self.tfunc = (lambda x: np.log(1/x - 1)) if biject else (lambda x: x)
 
-        ## use low-discrepancy series
+        # use low-discrepancy series
         try:
             if not self.params.rule:
                 raise ModuleNotFoundError()
             import chaospy
-            self.rand = lambda size: chaospy.MvNormal(np.zeros(size[1]), np.eye(size[1])).sample(size=size[0], rule=self.params.rule).T
+            self.randn = lambda size: chaospy.MvNormal(np.zeros(size[1]), np.eye(size[1])).sample(size=size[0], rule=self.params.rule).T
         except ModuleNotFoundError:
-            self.rand = lambda size: np.random.normal(0, 1, size=size)
-        # self.rand = lambda size: np.random.normal(0, 1, size=size)
+            self.randn = lambda size: np.random.normal(0, 1, size=size)
 
         # initialize dynamic state variables
         self.sigma = self.tfunc(.5-sigma) if biject else sigma
         self.xmean = self.tfunc(xstart)
-        # self.sigma = sigma
-        # self.xmean = xstart.copy()
 
-        # initialize evolution path for C
+        # initialize evolution path for COV
         self.pc = np.zeros(N)
         # initialize evolution path for sigma
         self.ps = np.zeros(N)
@@ -244,15 +236,14 @@ class CMAES(object):
         self.condition_number = np.linalg.cond(self.C)
         self.invsqrt = np.linalg.inv(np.linalg.cholesky(self.C))
 
-        # potentially use low-discrepancy series here
-        z = self.sigma * self.eigenvalues**0.5 * self.rand(size=(par.lam, par.ndim))
+        z = self.sigma * self.eigenvalues**0.5 * self.randn(size=(par.lam, par.ndim))
         y = self.eigenbasis @ z.T
         xs = self.xmean + y.T
 
         res = self.pool.imap(self.objective_fct, xs)
         fs = map2arr(res)
 
-        ## interrupt if scewed
+        # interrupt if things don't go nicely
         if np.isinf(fs).all():
             raise ValueError('Sample returns infs only.')
 
@@ -265,10 +256,10 @@ class CMAES(object):
         self.fs = np.sort(fs)
         self.best.update(xs[0], self.fs[0], self.counteval)
 
-        # recombination: compute new weighted mean value
+        # compute new weighted mean value via recombination
         self.xmean = xs[0:par.mu].T @ par.weights[:par.mu]
 
-        # cumulation: update evolution paths
+        # update evolution paths via cumulation: 
         y = self.xmean - xold
         z = self.invsqrt @ y
         csn = (par.cs * (2 - par.cs) * par.mueff)**0.5 / self.sigma
@@ -284,7 +275,7 @@ class CMAES(object):
 
         self.pc = (1 - par.cc) * self.pc + ccn * hsig * y
 
-        # covariance matrix adaption
+        # covariance matrix adaption:
         # minor adjustment for the variance loss from hsig
         c1a = par.c1 * (1 - (1-hsig**2) * par.cc * (2-par.cc))
         self.C *= 1 - c1a - par.cmu * np.sum(par.weights)
