@@ -6,18 +6,8 @@ import time
 import numpy as np
 from grgrlib import map2arr
 
-def tfunc(x, func, punc=None):
-    """Truncator function (not in use)
-    """
-    punc = punc or (lambda x: np.sum(x**4))
-    xt = x.copy()
-    xt[x<0] = 0
-    xt[x>1] = 1
 
-    return func(xt) + punc(x[x<0]) + punc(x[x>1] + 1)
-
-
-def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, maxfev=None, biject=False, verb_disp=100, verb_save=1000, **args):
+def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, biject=False, verb_disp=100, **args):
     """UI access point to `CMAES`
     """
 
@@ -46,7 +36,7 @@ class CMAESParameters(object):
     """static "internal" parameter setting for `CMAES`
     """
 
-    def __init__(self, ndim, popsize, mu=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=True, autofix=False, ld_rule=None):
+    def __init__(self, ndim, popsize, mu=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=None, scaled=False, ld_rule=None):
         """Set static, fixed "strategy" parameters.
 
         Parameters
@@ -70,7 +60,9 @@ class CMAESParameters(object):
         xtol : float, optional
             Absolute tolerance of solution values (defaults to 1e-8)
         active : bool, optional
-            Whether to use aCMA-Es, a modern variant (True by default)
+            Whether to use aCMA-ES, a modern variant (True by default, unless `scaled` CMA is used)
+        scaled : bool, optional
+            Whether to scale CMA-ES for large populatoins (False by default)
         """
 
         self.fatol = fatol or 1e-8
@@ -85,11 +77,14 @@ class CMAESParameters(object):
         def_pop = 4 + int(3*np.log(ndim))
         self.lam = popsize or def_pop
         
-        mu = def_pop/2. if autofix else mu
+        mu = int(def_pop/2.) if scaled else mu
         # set number of parents/points/solutions for recombination
         self.mu = mu or int(self.lam / 2)
 
         self.maxfev = maxfev or 100*self.lam + 150*(ndim+3)**2*self.lam**.5
+
+        if active is None:
+            active = False if scaled else True
 
         if active:
             self.weights, self.mueff = self.recombination_weights()
@@ -142,6 +137,9 @@ class CMAESParameters(object):
         prt_str1 += '(%1.2f)]' % def_cmu if def_cmu != self.cmu else ']'
         print('[cma-es:]'.ljust(15, ' ') + prt_str0)
         print(''.ljust(15, ' ') + prt_str1)
+
+        if scaled and active:
+            print(''.ljust(15, ' ') + 'warning: scaled CMA works better without active adaptation.')
 
     def recombination_weights(self):
 
