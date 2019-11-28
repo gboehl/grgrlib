@@ -71,7 +71,7 @@ class CMAESParameters(object):
 
         self.ndim = ndim
         # low-discrepancy rule (chaospy)
-        self.rule = 'H' if ld_rule is None else ld_rule
+        self.rule = 'L' if ld_rule is None else ld_rule
 
         # set strategy parameter for selection
         def_pop = 4 + int(3*np.log(ndim))
@@ -79,7 +79,7 @@ class CMAESParameters(object):
         
         mu = int(def_pop/2.) if scaled else mu
         # set number of parents/points/solutions for recombination
-        self.mu = mu or int(self.lam / 2)
+        self.mu = int(mu or (self.lam / 2))
 
         self.maxfev = maxfev or 100*self.lam + 150*(ndim+3)**2*self.lam**.5
 
