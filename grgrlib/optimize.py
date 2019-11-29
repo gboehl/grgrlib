@@ -48,9 +48,9 @@ class CMAESParameters(object):
         cc : float, optional
             Backward time horizon for the evolution path (automatically assigned by default) 
         cs : float, optional
-            Makes partly up for the small variance loss in case the indicator is zero (automatically assigned by default) 
+            Makes partly up for the small variance loss in case the indicator is zero. Setting this to zero avoids explosion of the step size for large populations (automatically assigned by default) 
         c1 : float, optional
-            Learning rate for the rank-one update of the covariance matrix (automatically assigned by default)
+            Learning rate for the rank-one update of the covariance matrix. Setting this to one (together with cs=0, and potentially cmu=1) nests the case where a fully newly estimated covariance is updated (automatically assigned by default)
         cmu : float, optional
             Learning rate for the rank-μ update of the covariance matrix (automatically assigned by default)
         fatol : float, optional
@@ -144,7 +144,7 @@ class CMAESParameters(object):
 
     def recombination_weights(self):
 
-        weights = np.log(self.lam + 1) - np.log(np.arange(self.lam)+1) - np.log(2)
+        weights = np.log(self.lam + 1) - np.log(np.arange(self.lam)+1) - np.log(self.lam/self.mu)
 
         mu = np.sum(weights > 0)
         weights /= np.sum(weights[:mu])
