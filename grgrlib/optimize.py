@@ -36,7 +36,7 @@ class CMAESParameters(object):
     """static "internal" parameter setting for `CMAES`
     """
 
-    def __init__(self, ndim, popsize, mu=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=None, scaled=False, ld_rule=None):
+    def __init__(self, ndim, popsize, mu=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=None, scaled=False, elitist=False, ld_rule=None):
         """Set static, fixed "strategy" parameters.
 
         Parameters
@@ -72,6 +72,7 @@ class CMAESParameters(object):
         self.ndim = ndim
         # low-discrepancy rule (chaospy)
         self.rule = 'L' if ld_rule is None else ld_rule
+        self.elitist = elitist
 
         # set strategy parameter for selection
         def_pop = 4 + int(3*np.log(ndim))
@@ -247,11 +248,19 @@ class CMAES(object):
 
         self.counteval += len(fs)
         N = len(self.xmean)
-        xold = self.xmean 
+        xold = self.xmean.copy()
+
+        if par.elitist and hasattr(self, 'fs'):
+            fsold = self.fs.copy()
+            xsold = self.xs.copy()
+            fs = np.hstack((fs,fsold))
+            xs = np.vstack((xs,xsold))
 
         # sort by fitness
-        xs = xs[fs.argsort()]
-        self.fs = np.sort(fs)
+        xs = xs[fs.argsort()][:par.lam]
+        self.fs = np.sort(fs)[:par.lam]
+        self.xs = xs
+
         self.best.update(xs[0], self.fs[0], self.counteval)
 
         # compute new weighted mean value via recombination
