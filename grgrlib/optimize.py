@@ -91,11 +91,19 @@ class CMAESParameters(object):
         else:
             # set non-negative recombination weights & normalize them
             weights = np.zeros(self.lam)
-            weights[:self.mu] = np.log(self.mu + 0.5) - np.log(np.arange(self.mu) + 1)
+            weights[:self.mu] = np.log(self.lam + 1) - np.log(np.arange(self.mu) + 1) - np.log(self.lam/self.mu)
             self.weights = weights/np.sum(weights[:self.mu])
             # variance-effectiveness of sum w_i x_i
             self.mueff = np.sum(
                 self.weights[:self.mu])**2 / np.sum(self.weights[:self.mu]**2)
+
+        if mu_mean:
+            weights_mean = np.zeros(self.lam)
+            weights_mean[:self.mu_mean] = np.log(self.lam + 1) - np.log(np.arange(self.mu_mean) + 1) - np.log(self.lam/self.mu_mean)
+            self.weights_mean = weights_mean/np.sum(weights_mean[:self.mu_mean])
+        else:
+            self.weights_mean = self.weights
+        self.mu_mean = mu_mean or self.mu
 
         # set strategy parameter adaptation:
         # set time constant for cumulation for COV
@@ -223,6 +231,9 @@ class CMAES(object):
         self.best = BestSolution()
         self.biject = biject
 
+        if biject:
+            print(''.ljust(15, ' ') + 'warning: the bijective transformation of `sigma` assumes `p0` to be exactly 0.5. Increase `sigma` to adjust for deviations')
+
     def run(self):
         """update the evolution paths and the distribution parameters m,
         sigma, and C within CMA-ES.
@@ -257,7 +268,7 @@ class CMAES(object):
         self.best.update(xs[0], self.fs[0], self.counteval)
 
         # compute new weighted mean value via recombination
-        self.xmean = xs[0:par.mu].T @ par.weights[:par.mu]
+        self.xmean = xs[0:par.mu_mean].T @ par.weights_mean[:par.mu_mean]
 
         # update evolution paths via cumulation: 
         y = self.xmean - xold
