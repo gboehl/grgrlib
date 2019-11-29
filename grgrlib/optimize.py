@@ -36,7 +36,7 @@ class CMAESParameters(object):
     """static "internal" parameter setting for `CMAES`
     """
 
-    def __init__(self, ndim, popsize, mu=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=None, scaled=False, ld_rule=None):
+    def __init__(self, ndim, popsize, mu=None, mu_mean=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=None, scaled=False, ld_rule=None):
         """Set static, fixed "strategy" parameters.
 
         Parameters
@@ -97,13 +97,13 @@ class CMAESParameters(object):
             self.mueff = np.sum(
                 self.weights[:self.mu])**2 / np.sum(self.weights[:self.mu]**2)
 
+        self.mu_mean = mu_mean or self.mu
         if mu_mean:
             weights_mean = np.zeros(self.lam)
             weights_mean[:self.mu_mean] = np.log(self.lam + 1) - np.log(np.arange(self.mu_mean) + 1) - np.log(self.lam/self.mu_mean)
             self.weights_mean = weights_mean/np.sum(weights_mean[:self.mu_mean])
         else:
             self.weights_mean = self.weights
-        self.mu_mean = mu_mean or self.mu
 
         # set strategy parameter adaptation:
         # set time constant for cumulation for COV
