@@ -7,24 +7,24 @@ import numpy as np
 from grgrlib import map2arr
 
 
-def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, biject=False, verb_disp=100, **args):
+def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, biject=False, verbosity=100, **args):
     """UI access point to `CMAES`
     """
 
-    es = CMAES(xstart, sigma, popsize=popsize, biject=biject, **args)
+    es = CMAES(xstart, sigma, popsize=popsize, biject=biject, verbosity=verbosity, **args)
 
     es.bfunc = (lambda x: 1/(1 + np.exp(x))) if biject else (lambda x: x)
     es.objective_fct = lambda x: objective_fct(es.bfunc(x))
 
-    es.pool = pool
+    es.map = pool.imap if pool else map
     es.stime = time.time()
 
     while not es.stop():
         es.run()
-        es.disp(verb_disp)
+        es.disp(verbosity)
 
     # do not print by default to allow silent verbosity
-    if verb_disp:
+    if verbosity:
 
         es.disp(1)
         print('[cma-es:]'.ljust(15, ' ') + 'termination by ' + es.stop())
@@ -36,7 +36,7 @@ class CMAESParameters(object):
     """static "internal" parameter setting for `CMAES`
     """
 
-    def __init__(self, ndim, popsize, mu=None, mu_mean=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=None, scaled=False, ld_rule=None):
+    def __init__(self, ndim, popsize, mu=None, mu_mean=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=None, scaled=False, ld_rule=None, verbose=True):
         """Set static, fixed "strategy" parameters.
 
         Parameters
@@ -129,25 +129,26 @@ class CMAESParameters(object):
         if active:
             self.finalize_weights()
 
-        prt_str0 = '(%d' % (self.mu) + ',%d' % (self.lam) + ')-' + 'CMA-ES'
-        prt_str0 += ' (mu_w=%2.1f,w_1=%d%%)' % (self.mueff,
-                                                int(100 * self.weights[0]))
-        prt_str0 += ' in %d dimensions (seed=%s)' % (ndim,
-                                                     np.random.get_state()[1][0])
+        if verbose:
+            prt_str0 = '(%d' % (self.mu) + ',%d' % (self.lam) + ')-' + 'CMA-ES'
+            prt_str0 += ' (mu_w=%2.1f,w_1=%d%%)' % (self.mueff,
+                                                    int(100 * self.weights[0]))
+            prt_str0 += ' in %d dimensions (seed=%s)' % (ndim,
+                                                         np.random.get_state()[1][0])
 
-        prt_str1 = '[cc=%1.2f' % self.cc
-        prt_str1 += '(%1.2f)' % def_cc if def_cc != self.cc else ''
-        prt_str1 += ', cs=%1.2f' % self.cs
-        prt_str1 += '(%1.2f)' % def_cs if def_cs != self.cs else ''
-        prt_str1 += ', c1=%1.2f' % self.c1
-        prt_str1 += '(%1.2f)' % def_c1 if def_c1 != self.c1 else ''
-        prt_str1 += ', cmu=%1.2f' % self.cmu
-        prt_str1 += '(%1.2f)]' % def_cmu if def_cmu != self.cmu else ']'
-        print('[cma-es:]'.ljust(15, ' ') + prt_str0)
-        print(''.ljust(15, ' ') + prt_str1)
+            prt_str1 = '[cc=%1.2f' % self.cc
+            prt_str1 += '(%1.2f)' % def_cc if def_cc != self.cc else ''
+            prt_str1 += ', cs=%1.2f' % self.cs
+            prt_str1 += '(%1.2f)' % def_cs if def_cs != self.cs else ''
+            prt_str1 += ', c1=%1.2f' % self.c1
+            prt_str1 += '(%1.2f)' % def_c1 if def_c1 != self.c1 else ''
+            prt_str1 += ', cmu=%1.2f' % self.cmu
+            prt_str1 += '(%1.2f)]' % def_cmu if def_cmu != self.cmu else ']'
+            print('[cma-es:]'.ljust(15, ' ') + prt_str0)
+            print(''.ljust(15, ' ') + prt_str1)
 
-        if scaled and active:
-            print(''.ljust(15, ' ') + 'warning: scaled CMA works better without active adaptation.')
+            if scaled and active:
+                print(''.ljust(15, ' ') + 'warning: scaled CMA works better without active adaptation.')
 
     def recombination_weights(self):
 
@@ -200,11 +201,11 @@ class CMAESParameters(object):
 
 class CMAES(object):
 
-    def __init__(self, xstart, sigma, popsize, biject, **args):
+    def __init__(self, xstart, sigma, popsize, biject, verbosity, **args):
 
         # number of dimensions
         N = len(xstart)
-        self.params = CMAESParameters(N, popsize, **args)
+        self.params = CMAESParameters(N, popsize, verbose=verbosity, **args)
 
         # define bijection function
         self.tfunc = (lambda x: np.log(1/x - 1)) if biject else (lambda x: x)
@@ -249,7 +250,7 @@ class CMAES(object):
         y = self.eigenbasis @ z.T
         xs = self.xmean + y.T
 
-        res = self.pool.imap(self.objective_fct, xs)
+        res = self.map(self.objective_fct, xs)
         fs = map2arr(res)
 
         # interrupt if things don't go nicely
