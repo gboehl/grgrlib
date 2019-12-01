@@ -1,16 +1,25 @@
 Documentation
 ==================
 
-``grgrlib.stuff``
+``grgrlib.core``
 ------------------
-.. automodule:: grgrlib.stuff
+.. automodule:: grgrlib.core
    :members:
    :undoc-members:
    :show-inheritance:
 
 ``grgrlib.plots``
 ------------------
+A collection of handy plotting functions.
 .. automodule:: grgrlib.plots
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+``grgrlib.optimize``
+------------------
+Hand-written optimizers. Currently only CMA-ES.
+.. automodule:: grgrlib.optimize
    :members:
    :undoc-members:
    :show-inheritance:

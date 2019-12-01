@@ -1,14 +1,43 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import tqdm
 import time
 import numpy as np
 from grgrlib import map2arr
 
 
-def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, biject=False, verbosity=100, **args):
-    """UI access point to `CMAES`
+def cmaes(objective_fct, xstart, sigma, popsize=None, mapper=None, biject=False, verbosity=100, **args):
+    """UI access point to `CMAES` to minimize `objective_fct`
+
+    ...
+
+    This is in parts taken from the `pycma` package, but generally reworked and cleaned up. Arguably, this interface is relatively slim and the code more readible. Thougout this code it is assumed that the problem is expected to lie within the unit hypercube.
+
+    Parameters
+    ----------
+    objective_fct : callable
+        A function that takes as input a numpy array and returns a (numpy) float. If you want to use additional aruments to the function, just use `lambda` before you pass it on.
+    xstart : array
+        Initial mean/solution vector.
+    sigma : float
+        Initial step-size, standard deviation in any coordinate.
+    popsize : int
+        Population size. By default will be determined from the dimensionality of the problem.
+    mapper : callable, optional
+        A funciton mapper. This could just be `map` (default), but is meant to work with a multiprocessing pool such as `pathos.pools.ProcessPool().imap`. Defaults to `map`.
+    biject : bool, optional
+        Whether or not to employ a bijective mapping to enforce that only values within the hypercube are called. Defaults to `False`.
+    verbosity : int, optional
+        Number of iterations to wait until update is printed. Defaults to 100.
+    args : keyword arguments, optional
+        Additional arguments, in particular stopping criteria and parameters. See the `CMAESParameters` class.
+
+    Notes
+    -----
+    The CMA-ES algoritm is not optimized for large populations. In particular, it might get stuck or just not converge. One way to avoid explosion of the covariance for large populations is to manually set the parameter `cs` (very) close to zero. Another way is to reduce `mu` to only update using a few top-samples. This is automatically done if you set the `scaled` option to `True`. Note that doing so might have other disadvantages. If you prefer tighter selecton of only the best sample without reducing the size of the cov update, you can reduce `mu_mean`, which is the size of the offspring vector for the mean only. 
+
+    All in all, this is a powerful method which, due to its heuristic nature, requires quite some tweaking at times.
+
     """
 
     es = CMAES(xstart, sigma, popsize=popsize, biject=biject, verbosity=verbosity, **args)
@@ -16,7 +45,7 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, pool=None, biject=False, v
     es.bfunc = (lambda x: 1/(1 + np.exp(x))) if biject else (lambda x: x)
     es.objective_fct = lambda x: objective_fct(es.bfunc(x))
 
-    es.map = pool.imap if pool else map
+    es.map = mapper or map
     es.stime = time.time()
 
     while not es.stop():
@@ -45,6 +74,10 @@ class CMAESParameters(object):
             Dimensionality of the problem.
         popsize : int
             Population size.
+        mu : int, optional
+            Size of the vector of offsprings generated from a population.
+        mu_mean : int, optional
+            Size of the vector of offsprings generated from a population, only used for the calculation of the mean.
         cc : float, optional
             Backward time horizon for the evolution path (automatically assigned by default) 
         cs : float, optional
@@ -63,6 +96,8 @@ class CMAESParameters(object):
             Whether to use aCMA-ES, a modern variant (True by default, unless `scaled` CMA is used)
         scaled : bool, optional
             Whether to scale CMA-ES for large populatoins (False by default)
+        ld_rule : str, optional
+            Must be a low-discrepancy rule from the `chaospy` module. (defaults to 'L' if `chaospy` can be found)
         """
 
         self.fatol = fatol or 1e-8
