@@ -11,14 +11,16 @@ Documentation
 ``grgrlib.plots``
 ------------------
 A collection of handy plotting functions.
+
 .. automodule:: grgrlib.plots
    :members:
    :undoc-members:
    :show-inheritance:
 
 ``grgrlib.optimize``
-------------------
-Hand-written optimizers. Currently only CMA-ES.
+--------------------
+Hand-written optimizers. Currently only CMA-ES. Look for the documentation of `cmaes` (the UI) to understand its usage.
+
 .. automodule:: grgrlib.optimize
    :members:
    :undoc-members:
