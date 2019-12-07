@@ -464,6 +464,21 @@ def mode(x):
     return xs[p.argmax()]
 
 
+def serializer(func):
+    """Dirty hack that transforms the non-serializable function to a serializable one (when using dill)
+    ...
+    Don't try that at home!
+    """
+
+    fname = func.__name__
+    exec('dark_%s = func' %fname, locals(), globals())
+
+    def vodoo(*args, **kwargs):
+        return eval('dark_%s(*args, **kwargs)' %fname)
+
+    return vodoo
+
+
 # aliases 
 map2list = map2arr
 indof = np.searchsorted

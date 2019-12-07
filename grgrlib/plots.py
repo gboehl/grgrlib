@@ -178,6 +178,9 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
             if not isinstance(yscale, pd.DatetimeIndex):
                 ax[i].xaxis.set_major_locator(locator)
 
+    # the notebook `inline` backend does not like `tight_layout`. But better don't use it...
+    # shell = get_ipython().__class__.__name__
+    # if not shell == 'ZMQInteractiveShell' and figs is not None:
     if figs is not None:
         [fig.tight_layout() for fig in figs]
 
