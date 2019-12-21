@@ -346,12 +346,15 @@ class CMAES(object):
         """Check termination criteria and return string.
         """
 
-        if not self.counteval or np.isinf(self.fs).any():
+        if not self.counteval:
             return False
+        if np.sum(np.isinf(self.fs)) > self.params.mueff:
+            return False
+        last_fs = self.fs[~np.isinf(self.fs)][-1]
 
-        if len(self.fs) > 1 and self.fs[-1] - self.fs[0] < self.params.fatol:
+        if len(self.fs) > 1 and last_fs - self.fs[0] < self.params.fatol:
             return 'fatol of %1.0e.' % self.params.fatol
-        if len(self.fs) > 1 and self.fs[-1]/self.fs[0] - 1 < self.params.frtol:
+        if len(self.fs) > 1 and last_fs/self.fs[0] - 1 < self.params.frtol:
             return 'frtol of %1.0e.' % self.params.frtol
         if self.sigma * np.max(self.eigenvalues)**0.5 < self.params.xtol:
             return 'xtol of %1.0e.' % self.params.xtol
