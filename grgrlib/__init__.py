@@ -4,3 +4,4 @@
 from .core import *
 from .plots import *
 from .njitted import *
+from .optimize import *

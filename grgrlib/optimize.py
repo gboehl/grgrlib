@@ -426,3 +426,94 @@ class BestSolution(object):
         """``(x, f, evals)`` of the best seen solution.
         """
         return self.x, self.f, self.evals
+
+
+def broyden(f, x0, eps=1e-4, maxiter=500, transpose_jac=False, record_history=False, verbose=True):
+    """A simple 2D implementation of Broyden's method. 
+
+    This is not optimized for performance, but intended to better understand the target function.
+
+    Parameters
+    ----------
+
+    f : callable
+    x0 : array
+    eps : float, optional
+    maxiter : int, optional
+    transpose_jac : bool, optional
+    record_history : bool, optional
+    verbose : bool, optional
+
+    """
+
+    np.warnings.filterwarnings('error')
+
+    x0 = np.array(x0)
+    f0 = f(x0)
+
+    # depending on the problem, eps can have A LARGE influence on the result
+    J = np.empty((2,2))
+    J[0,:] = (f((x0[0]+eps,x0[1])) - f0)/eps
+    J[1,:] = (f((x0[0],x0[1]+eps)) - f0)/eps
+    J_inv = np.linalg.inv(J.T if transpose_jac else J)
+
+    cnt = 0
+    trace = [(x0,f0)]
+
+    while True:
+        x1, f1 = x0, f0
+
+        if verbose > 1:
+            print('x0: ', x0)
+            print('f0:', f0)
+            print('Jacobian:')
+            try:
+                print(np.linalg.inv(J_inv))
+            except np.linalg.LinAlgError:
+                print('(singular)')
+            print('Inverse Jacobian:')
+            print(J_inv)
+            print()
+
+        x0 = x0 - J_inv @ f0
+
+
+        try:
+            f0 = f(x0)
+        except RuntimeWarning as e:
+            mess = 'not found (%s)' %str(e)
+            break
+
+        if record_history:
+            trace.append((x0, f0))
+
+        cnt += 1
+
+        dx = x0 - x1
+        df = f0 - f1
+
+        if np.all(np.abs(f0) < 1e-4):
+            mess = 'converged to root'
+            break
+        if np.all(np.abs(dx) < 1e-8):
+            mess = 'not found (xtol)'
+            break
+        if np.all(np.abs(df) < 1e-8):
+            mess = 'not found (ftol)'
+            break
+        if np.isnan(dx).any():
+            mess = 'not fund (func is nan)'
+            break
+        if cnt == maxiter:
+            mess = 'did not converge (maxiter)'
+            break
+
+        nJ = np.outer(dx - J_inv@df, dx @ J_inv)/ (dx @ J_inv @ df) 
+        J_inv += nJ
+
+    if verbose:
+        print('Solution %s after %s iterations. Max func: %1.4e, vec: %s' %(mess, cnt, np.max(abs(f0)), x0))
+
+    np.warnings.filterwarnings('default')
+
+    return x0, f0, cnt, mess, trace
