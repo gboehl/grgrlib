@@ -19,7 +19,9 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
     X0 = np.array(X[0])
 
     if yscale is None:
-        if X0.ndim > 1:
+        if isinstance(X[0], pd.DataFrame):
+            yscale = X[0].index
+        elif X0.ndim > 1:
             yscale = np.arange(X[0].shape[-2])
         else:
             yscale = np.arange(len(X0))
@@ -79,9 +81,9 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
             interval = x[[0, 2]]
         if x.shape[0] > 3:
             if not bulk_plot:
-                interval = np.percentile(
+                interval = np.nanpercentile(
                     x, [sigma*100/2, (1 - sigma/2)*100], axis=0)
-                line = np.median(x, axis=0)
+                line = np.nanmedian(x, axis=0)
             else:
                 bulk = x
 
