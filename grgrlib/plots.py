@@ -9,7 +9,7 @@ from matplotlib.colors import LogNorm, SymLogNorm
 from .core import fast0
 
 
-def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_plot=False, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3, **plotargs):
+def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, legend=None, bulk_plot=False, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3, **plotargs):
 
     if not isinstance(X, tuple):
         # make it a tuple
@@ -39,11 +39,11 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
     else:
         labels = np.ascontiguousarray(labels)
 
-    if style is None:
-        style = '-'
+    if styles is None:
+        styles = '-'
 
-    if not isinstance(style, tuple):
-        style = np.repeat(style, len(X))
+    if not isinstance(styles, tuple):
+        styles = np.repeat(styles, len(X))
 
     if nlocbins is None:
         nlocbins = 'auto'
@@ -98,6 +98,7 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
 
         X_list.append((line, interval, bulk))
 
+    colors = colors or [None]*len(X_list)
     no_states = sum(selector)
 
     # first create axes as an iterateble if it does not exist
@@ -156,16 +157,18 @@ def grplot(X, yscale=None, labels=None, title='', style=None, legend=None, bulk_
         for i in range(no_states):
 
             if line is not None:
-                lline = ax[i].plot(yscale, line[:, selector][:, i],
-                                       style[obj_no], lw=2, label=legend_tag, **plotargs)
+                lline = ax[i].plot(yscale, line[:, selector][:, i], styles[obj_no],
+                                   color=colors[obj_no], lw=2, label=legend_tag, **plotargs)
             if interval is not None:
 
-                label=legend_tag if line is None else None
+                label = legend_tag if line is None else None
                 if line is None:
-                    ax[i].fill_between( yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha, label=label, **plotargs)
+                    ax[i].fill_between(yscale, *interval[:, :, selector]
+                                       [:, :, i], lw=0, alpha=alpha, label=label, **plotargs)
                 else:
                     color = lline[-1].get_color()
-                    ax[i].fill_between( yscale, *interval[:, :, selector][:, :, i], lw=0, color=color, alpha=alpha, label=label, **plotargs)
+                    ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i],
+                                       lw=0, color=color, alpha=alpha, label=label, **plotargs)
 
             elif bulk is not None:
                 if len(X_list) > 1:

@@ -40,7 +40,8 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, mapper=None, biject=False,
 
     """
 
-    es = CMAES(xstart, sigma, popsize=popsize, biject=biject, verbosity=verbosity, **args)
+    es = CMAES(xstart, sigma, popsize=popsize,
+               biject=biject, verbosity=verbosity, **args)
 
     es.bfunc = (lambda x: 1/(1 + np.exp(x))) if biject else (lambda x: x)
     es.objective_fct = lambda x: objective_fct(es.bfunc(x))
@@ -111,7 +112,7 @@ class CMAESParameters(object):
         # set strategy parameter for selection
         def_pop = 4 + int(3*np.log(ndim))
         self.lam = popsize or def_pop
-        
+
         mu = int(def_pop/2.) if scaled else mu
         # set number of parents/points/solutions for recombination
         self.mu = int(mu or (self.lam / 2))
@@ -126,7 +127,8 @@ class CMAESParameters(object):
         else:
             # set non-negative recombination weights & normalize them
             weights = np.zeros(self.lam)
-            weights[:self.mu] = np.log(self.lam + 1) - np.log(np.arange(self.mu) + 1) - np.log(self.lam/self.mu)
+            weights[:self.mu] = np.log(
+                self.lam + 1) - np.log(np.arange(self.mu) + 1) - np.log(self.lam/self.mu)
             self.weights = weights/np.sum(weights[:self.mu])
             # variance-effectiveness of sum w_i x_i
             self.mueff = np.sum(
@@ -135,8 +137,10 @@ class CMAESParameters(object):
         self.mu_mean = mu_mean or self.mu
         if mu_mean:
             weights_mean = np.zeros(self.lam)
-            weights_mean[:self.mu_mean] = np.log(self.lam + 1) - np.log(np.arange(self.mu_mean) + 1) - np.log(self.lam/self.mu_mean)
-            self.weights_mean = weights_mean/np.sum(weights_mean[:self.mu_mean])
+            weights_mean[:self.mu_mean] = np.log(
+                self.lam + 1) - np.log(np.arange(self.mu_mean) + 1) - np.log(self.lam/self.mu_mean)
+            self.weights_mean = weights_mean / \
+                np.sum(weights_mean[:self.mu_mean])
         else:
             self.weights_mean = self.weights
 
@@ -183,11 +187,13 @@ class CMAESParameters(object):
             print(''.ljust(15, ' ') + prt_str1)
 
             if scaled and active:
-                print(''.ljust(15, ' ') + 'warning: scaled CMA works better without active adaptation.')
+                print(''.ljust(
+                    15, ' ') + 'warning: scaled CMA works better without active adaptation.')
 
     def recombination_weights(self):
 
-        weights = np.log(self.lam + 1) - np.log(np.arange(self.lam)+1) - np.log(self.lam/self.mu)
+        weights = np.log(self.lam + 1) - \
+            np.log(np.arange(self.lam)+1) - np.log(self.lam/self.mu)
 
         mu = np.sum(weights > 0)
         weights /= np.sum(weights[:mu])
@@ -215,7 +221,7 @@ class CMAESParameters(object):
                 value = np.abs((1 - self.c1 - self.cmu) / self.cmu / self.ndim)
 
                 # if nothing to limit
-                if np.sum(self.weights[self.mu:]) < -value:  
+                if np.sum(self.weights[self.mu:]) < -value:
                     factor = np.abs(value / np.sum(self.weights[self.mu:]))
                     if factor < 1:
                         self.weights[self.mu:] *= factor
@@ -226,7 +232,7 @@ class CMAESParameters(object):
             value = np.abs(1 + 2 * mueffminus / (self.mueff + 2))
 
             # if nothing to limit
-            if sum_neg < -value:  
+            if sum_neg < -value:
                 factor = np.abs(value / sum_neg)
                 if factor < 1:
                     self.weights[self.mu:] *= factor
@@ -250,7 +256,8 @@ class CMAES(object):
             if not self.params.rule:
                 raise ModuleNotFoundError()
             import chaospy
-            self.randn = lambda size: chaospy.MvNormal(np.zeros(size[1]), np.eye(size[1])).sample(size=size[0], rule=self.params.rule).T
+            self.randn = lambda size: chaospy.MvNormal(np.zeros(size[1]), np.eye(
+                size[1])).sample(size=size[0], rule=self.params.rule).T
         except ModuleNotFoundError:
             self.randn = lambda size: np.random.normal(0, 1, size=size)
 
@@ -281,7 +288,8 @@ class CMAES(object):
         self.condition_number = np.linalg.cond(self.C)
         self.invsqrt = np.linalg.inv(np.linalg.cholesky(self.C))
 
-        z = self.sigma * self.eigenvalues**0.5 * self.randn(size=(par.lam, par.ndim))
+        z = self.sigma * self.eigenvalues**0.5 * \
+            self.randn(size=(par.lam, par.ndim))
         y = self.eigenbasis @ z.T
         xs = self.xmean + y.T
 
@@ -306,7 +314,7 @@ class CMAES(object):
         # compute new weighted mean value via recombination
         self.xmean = xs[0:par.mu_mean].T @ par.weights_mean[:par.mu_mean]
 
-        # update evolution paths via cumulation: 
+        # update evolution paths via cumulation:
         y = self.xmean - xold
         z = self.invsqrt @ y
         csn = (par.cs * (2 - par.cs) * par.mueff)**0.5 / self.sigma
@@ -452,13 +460,13 @@ def broyden(f, x0, eps=1e-4, maxiter=500, transpose_jac=False, record_history=Fa
     f0 = f(x0)
 
     # depending on the problem, eps can have A LARGE influence on the result
-    J = np.empty((2,2))
-    J[0,:] = (f((x0[0]+eps,x0[1])) - f0)/eps
-    J[1,:] = (f((x0[0],x0[1]+eps)) - f0)/eps
+    J = np.empty((2, 2))
+    J[0, :] = (f((x0[0]+eps, x0[1])) - f0)/eps
+    J[1, :] = (f((x0[0], x0[1]+eps)) - f0)/eps
     J_inv = np.linalg.inv(J.T if transpose_jac else J)
 
     cnt = 0
-    trace = [(x0,f0)]
+    trace = [(x0, f0)]
 
     while True:
         x1, f1 = x0, f0
@@ -477,11 +485,10 @@ def broyden(f, x0, eps=1e-4, maxiter=500, transpose_jac=False, record_history=Fa
 
         x0 = x0 - J_inv @ f0
 
-
         try:
             f0 = f(x0)
         except RuntimeWarning as e:
-            mess = 'not found (%s)' %str(e)
+            mess = 'not found (%s)' % str(e)
             break
 
         if record_history:
@@ -508,11 +515,12 @@ def broyden(f, x0, eps=1e-4, maxiter=500, transpose_jac=False, record_history=Fa
             mess = 'did not converge (maxiter)'
             break
 
-        nJ = np.outer(dx - J_inv@df, dx @ J_inv)/ (dx @ J_inv @ df) 
+        nJ = np.outer(dx - J_inv@df, dx @ J_inv) / (dx @ J_inv @ df)
         J_inv += nJ
 
     if verbose:
-        print('Solution %s after %s iterations. Max func: %1.4e, vec: %s' %(mess, cnt, np.max(abs(f0)), x0))
+        print('Solution %s after %s iterations. Max func: %1.4e, vec: %s' %
+              (mess, cnt, np.max(abs(f0)), x0))
 
     np.warnings.filterwarnings('default')
 

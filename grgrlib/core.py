@@ -31,73 +31,73 @@ def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
 
 
-def truncate_rank(s,threshold,avoid_pathological):
-  "Find r such that s[:r] contains the threshold proportion of s."
-  assert isinstance(threshold,float)
-  if threshold == 1.0:
-    r = len(s)
-  elif threshold < 1.0:
-    r = np.sum(np.cumsum(s)/np.sum(s) < threshold)
-    r += 1 # Hence the strict inequality above
-    if avoid_pathological:
-      # If not avoid_pathological, then the last 4 diag. entries of
-      # reconst( *tsvd(eye(400),0.99) )
-      # will be zero. This is probably not intended.
-      r += np.sum(np.isclose(s[r-1], s[r:]))
-  else:
-    raise ValueError
-  return r
+def truncate_rank(s, threshold, avoid_pathological):
+    "Find r such that s[:r] contains the threshold proportion of s."
+    assert isinstance(threshold, float)
+    if threshold == 1.0:
+        r = len(s)
+    elif threshold < 1.0:
+        r = np.sum(np.cumsum(s)/np.sum(s) < threshold)
+        r += 1  # Hence the strict inequality above
+        if avoid_pathological:
+            # If not avoid_pathological, then the last 4 diag. entries of
+            # reconst( *tsvd(eye(400),0.99) )
+            # will be zero. This is probably not intended.
+            r += np.sum(np.isclose(s[r-1], s[r:]))
+    else:
+        raise ValueError
+    return r
 
 
 def is_int(a):
-  return np.issubdtype(type(a), np.integer)
+    return np.issubdtype(type(a), np.integer)
 
 
 def tsvd(A, threshold=0.99999, avoid_pathological=True):
-  """Truncated svd.
+    """Truncated svd.
 
-  Also automates 'full_matrices' flag.
+    Also automates 'full_matrices' flag.
 
-  - threshold:
+    - threshold:
 
-    - if float, < 1.0 then "rank" = lowest number
-      such that the "energy" retained >= threshold
-    - if int,  >= 1   then "rank" = threshold
+      - if float, < 1.0 then "rank" = lowest number
+        such that the "energy" retained >= threshold
+      - if int,  >= 1   then "rank" = threshold
 
-  - avoid_pathological: avoid truncating (e.g.) the identity matrix.
-    NB: only applies for float threshold.
-  """
-  M,N = A.shape
-  full_matrices = False
+    - avoid_pathological: avoid truncating (e.g.) the identity matrix.
+      NB: only applies for float threshold.
+    """
+    M, N = A.shape
+    full_matrices = False
 
-  if is_int(threshold):
-    # Assume specific number is requested
-    r = threshold
-    assert 1 <= r <= max(M,N)
-    if r > min(M,N):
-      full_matrices = True
-      r = min(M,N)
+    if is_int(threshold):
+        # Assume specific number is requested
+        r = threshold
+        assert 1 <= r <= max(M, N)
+        if r > min(M, N):
+            full_matrices = True
+            r = min(M, N)
 
-  U,s,VT = sl.svd(A, full_matrices)
+    U, s, VT = sl.svd(A, full_matrices)
 
-  if isinstance(threshold,float):
-    # Assume proportion is requested
-    r = truncate_rank(s,threshold,avoid_pathological)
+    if isinstance(threshold, float):
+        # Assume proportion is requested
+        r = truncate_rank(s, threshold, avoid_pathological)
 
-  # Truncate
-  U  = U [:,:r]
-  VT = VT[  :r]
-  s  = s [  :r]
-  return U,s,VT
+    # Truncate
+    U = U[:, :r]
+    VT = VT[:r]
+    s = s[:r]
+    return U, s, VT
 
 
-def tinv(A,*kargs,**kwargs):
-  """
-  Inverse based on truncated svd.
-  Also see sl.pinv2().
-  """
-  U,s,VT = tsvd(A,*kargs,**kwargs)
-  return (VT.T * s**(-1.0)) @ U.T
+def tinv(A, *kargs, **kwargs):
+    """
+    Inverse based on truncated svd.
+    Also see sl.pinv2().
+    """
+    U, s, VT = tsvd(A, *kargs, **kwargs)
+    return (VT.T * s**(-1.0)) @ U.T
 
 
 def invertible_subm(A):
@@ -389,7 +389,7 @@ def shuffle(a, axis=-1):
     """
 
     shape = a.shape
-    res = a.reshape(-1,a.shape[axis])
+    res = a.reshape(-1, a.shape[axis])
     np.random.shuffle(res)
 
     return res.reshape(shape)
@@ -401,7 +401,8 @@ def blow_matrix(X, cov):
 
     mean = np.mean(X, axis=0)
 
-    X = mean + (X-mean) @ sl.sqrtm(c2 @ nl.inv(np.cov(X.T)) + np.eye(X.shape[1]))
+    X = mean + (X-mean) @ sl.sqrtm(c2 @
+                                   nl.inv(np.cov(X.T)) + np.eye(X.shape[1]))
 
     return X
 
@@ -456,11 +457,12 @@ def fast_kde(x, bw=4.5):
 
     return density, xmin, xmax
 
+
 def mode(x):
     """Find mode of (unimodal) univariate distribution"""
 
-    p,lb,ub = fast_kde(x)
-    xs = np.linspace(lb,ub,p.shape[0])
+    p, lb, ub = fast_kde(x)
+    xs = np.linspace(lb, ub, p.shape[0])
     return xs[p.argmax()]
 
 
@@ -471,14 +473,14 @@ def serializer(func):
     """
 
     fname = func.__name__
-    exec('dark_%s = func' %fname, locals(), globals())
+    exec('dark_%s = func' % fname, locals(), globals())
 
     def vodoo(*args, **kwargs):
-        return eval('dark_%s(*args, **kwargs)' %fname)
+        return eval('dark_%s(*args, **kwargs)' % fname)
 
     return vodoo
 
 
-# aliases 
+# aliases
 map2list = map2arr
 indof = np.searchsorted
