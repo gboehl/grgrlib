@@ -9,7 +9,7 @@ from matplotlib.colors import LogNorm, SymLogNorm
 from .core import fast0
 
 
-def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, legend=None, bulk_plot=False, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3, **plotargs):
+def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, legend=None, bulk_plot=False, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3, stat=np.nanmedian, **plotargs):
 
     if not isinstance(X, tuple):
         # make it a tuple
@@ -83,7 +83,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
             if not bulk_plot:
                 interval = np.nanpercentile(
                     x, [sigma*100/2, (1 - sigma/2)*100], axis=0)
-                line = np.nanmedian(x, axis=0)
+                line = stat(x, axis=0)
             else:
                 bulk = x
 
