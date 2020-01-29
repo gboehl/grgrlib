@@ -6,7 +6,7 @@ import numpy as np
 from grgrlib import map2arr
 
 
-def cmaes(objective_fct, xstart, sigma, popsize=None, mapper=None, biject=False, verbosity=100, **args):
+def cmaes(objective_fct, xstart, sigma, popsize=None, mapper=None, biject=False, verbose=100, **args):
     """UI access point to `CMAES` to minimize `objective_fct`
 
     ...
@@ -27,7 +27,7 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, mapper=None, biject=False,
         A funciton mapper. This could just be `map` (default), but is meant to work with a multiprocessing pool such as `pathos.pools.ProcessPool().imap`. Defaults to `map`.
     biject : bool, optional
         Whether or not to employ a bijective mapping to enforce that only values within the hypercube are called. Defaults to `False`.
-    verbosity : int, optional
+    verbose : int, optional
         Number of iterations to wait until update is printed. Defaults to 100.
     args : keyword arguments, optional
         Additional arguments, in particular stopping criteria and parameters. See the `CMAESParameters` class.
@@ -41,7 +41,7 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, mapper=None, biject=False,
     """
 
     es = CMAES(xstart, sigma, popsize=popsize,
-               biject=biject, verbosity=verbosity, **args)
+               biject=biject, verbose=verbose, **args)
 
     es.bfunc = (lambda x: 1/(1 + np.exp(x))) if biject else (lambda x: x)
     es.objective_fct = lambda x: objective_fct(es.bfunc(x))
@@ -51,11 +51,10 @@ def cmaes(objective_fct, xstart, sigma, popsize=None, mapper=None, biject=False,
 
     while not es.stop():
         es.run()
-        es.disp(verbosity)
+        es.disp(es.params.debug or verbose)
 
     # do not print by default to allow silent verbosity
-    if verbosity:
-
+    if verbose:
         es.disp(1)
         print('[cma-es:]'.ljust(15, ' ') + 'termination by ' + es.stop())
 
@@ -66,7 +65,7 @@ class CMAESParameters(object):
     """static "internal" parameter setting for `CMAES`
     """
 
-    def __init__(self, ndim, popsize, mu=None, mu_mean=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=None, scaled=False, ld_rule=None, verbose=True):
+    def __init__(self, ndim, popsize, mu=None, mu_mean=None, cc=None, cs=None, c1=None, cmu=None, fatol=None, frtol=None, xtol=None, maxfev=None, active=None, scaled=False, ld_rule=None, verbose=True, debug=False):
         """Set static, fixed "strategy" parameters.
 
         Parameters
@@ -101,6 +100,7 @@ class CMAESParameters(object):
             Must be a low-discrepancy rule from the `chaospy` module. (defaults to 'L' if `chaospy` can be found)
         """
 
+        self.debug = debug
         self.fatol = fatol or 1e-8
         self.frtol = frtol or 1e-8
         self.xtol = xtol or 1e-8
@@ -242,11 +242,11 @@ class CMAESParameters(object):
 
 class CMAES(object):
 
-    def __init__(self, xstart, sigma, popsize, biject, verbosity, **args):
+    def __init__(self, xstart, sigma, popsize, biject, verbose, **args):
 
         # number of dimensions
         N = len(xstart)
-        self.params = CMAESParameters(N, popsize, verbose=verbosity, **args)
+        self.params = CMAESParameters(N, popsize, verbose=verbose, **args)
 
         # define bijection function
         self.tfunc = (lambda x: np.log(1/x - 1)) if biject else (lambda x: x)
@@ -357,6 +357,8 @@ class CMAES(object):
         if not self.counteval:
             return False
         if np.sum(np.isinf(self.fs)) > self.params.mueff:
+            if self.params.debug:
+                print('[debug:] too many infs (%s>%s)' %(np.sum(np.isinf(self.fs)), self.params.mueff))
             return False
         last_fs = self.fs[~np.isinf(self.fs)][-1]
 
@@ -368,6 +370,8 @@ class CMAES(object):
             return 'xtol of %1.0e.' % self.params.xtol
         if self.counteval > self.params.maxfev:
             return 'maxfev of %1.0e.' % self.params.maxfev
+        if self.params.debug:
+            print('[debug:] (passed) fatol: %1.3e>%s; frtol: %1.3e>%s; xtol: %1.3e>%s; maxfev: %s<%s' %(last_fs - self.fs[0], self.params.fatol, last_fs/self.fs[0] - 1, self.params.frtol, self.sigma * np.max(self.eigenvalues)**0.5, self.params.xtol, self.counteval, int(self.params.maxfev)))
 
         return False
 
