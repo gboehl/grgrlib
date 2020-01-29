@@ -275,3 +275,14 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None):
 
 
 pplot = grplot
+
+
+def figurator(nrows=2, ncols=2, ngraphs=1, **args):
+    """Create list of figures and axes with more than one graph
+    """
+
+    fax = [plt.subplots(nrows, ncols, **args) for _ in range(ngraphs)]
+    axs = np.array([f[1] for f in fax]).flatten()
+    figs = [f[0] for f in fax]
+
+    return figs, axs
