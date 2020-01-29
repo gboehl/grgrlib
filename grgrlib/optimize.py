@@ -358,7 +358,7 @@ class CMAES(object):
             return False
         if np.sum(np.isinf(self.fs)) > self.params.mueff:
             if self.params.debug:
-                print('[debug:] too many infs (%s >= %s)' %(np.sum(np.isinf(self.fs)), np.ceil(self.params.mueff).astype(int))
+                print('[debug:] too many infs (%s >= %s)' %(np.sum(np.isinf(self.fs)), np.ceil(self.params.mueff).astype(int)))
             return False
         last_fs = self.fs[np.ceil(self.params.mueff).astype(int)]
 
