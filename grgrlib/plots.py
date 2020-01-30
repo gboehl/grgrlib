@@ -129,8 +129,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
 
                 if 4*i+j >= no_states:
                     ax_flat[j].set_visible(False)
-                else:
-                    ax.append(ax_flat[j])
+                ax.append(ax_flat[j])
 
             if title:
                 if plt_no > 1:
@@ -277,8 +276,24 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None):
 pplot = grplot
 
 
-def figurator(nrows=2, ncols=2, ngraphs=1, **args):
-    """Create list of figures and axes with more than one graph
+def figurator(nrows=2, ncols=2, nfigs=1, **args):
+    """Create list of figures and axes with (potentially) more than one graph
+
+    Parameters
+    ----------
+    nrows : int, optional
+        Number of rows per figure, defaults to 2
+    ncols : int, optional
+        Number of cols per figure, defaults to 2
+    nfigs : int, optional
+        Number of figures, defaults to 1
+    args : keyword arguments, optional
+        keyword arguments that will be forwarded to `matplotlib.pyplot.subplots`
+
+    Returns
+    -------
+    fis, ax : list, list
+        A tuple of two lists: the first list are all figure handlers, the second is a list of all the axis
     """
 
     fax = [plt.subplots(nrows, ncols, **args) for _ in range(ngraphs)]
