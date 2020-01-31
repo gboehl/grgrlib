@@ -296,7 +296,7 @@ def figurator(nrows=2, ncols=2, nfigs=1, **args):
         A tuple of two lists: the first list are all figure handlers, the second is a list of all the axis
     """
 
-    fax = [plt.subplots(nrows, ncols, **args) for _ in range(ngraphs)]
+    fax = [plt.subplots(nrows, ncols, **args) for _ in range(nfigs)]
     axs = np.array([f[1] for f in fax]).flatten()
     figs = [f[0] for f in fax]
 
