@@ -481,6 +481,11 @@ def serializer(func):
     return vodoo
 
 
+def sabs(x, eps=1e-10):
+    """absolute value but smooth around 0
+    """
+    return np.sqrt(x**2 + eps)
+
 # aliases
 map2list = map2arr
 indof = np.searchsorted
