@@ -152,7 +152,7 @@ def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, e
             flag += 1
         if np.isnan(p_func).all():
             flag += 2
-        if it_cnt == it_max:
+        if it_cnt >= it_max:
             flag += 4
 
     else:
