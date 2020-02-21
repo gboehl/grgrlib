@@ -9,7 +9,7 @@ from matplotlib.colors import LogNorm, SymLogNorm
 from .core import fast0
 
 
-def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, legend=None, bulk_plot=False, ax=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3, stat=np.nanmedian, **plotargs):
+def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, legend=None, bulk_plot=False, ax=None, fig=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3, stat=np.nanmedian, **plotargs):
 
     if not isinstance(X, tuple):
         # make it a tuple
@@ -99,6 +99,8 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         X_list.append((line, interval, bulk))
 
     colors = colors or [None]*len(X_list)
+    if isinstance(colors, str):
+        colors = (colors,)
     no_states = sum(selector)
 
     # first create axes as an iterateble if it does not exist
@@ -139,7 +141,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
             figs.append(fig)
     else:
         [axis.set_prop_cycle(None) for axis in ax]
-        figs = None
+        figs = fig or None
 
     if not isinstance(yscale, pd.DatetimeIndex):
         locator = MaxNLocator(nbins=nlocbins, steps=[1, 2, 4, 8, 10])
@@ -156,26 +158,25 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         for i in range(no_states):
 
             if line is not None:
+                lalpha = alpha if interval is None else 1
                 lline = ax[i].plot(yscale, line[:, selector][:, i], styles[obj_no],
-                                   color=colors[obj_no], lw=2, label=legend_tag, **plotargs)
+                                   color=colors[obj_no], lw=2, label=legend_tag, alpha=lalpha, **plotargs)
             if interval is not None:
 
                 label = legend_tag if line is None else None
                 if line is None:
                     ax[i].fill_between(yscale, *interval[:, :, selector]
-                                       [:, :, i], lw=0, alpha=alpha, label=label, **plotargs)
+                                       [:, :, i], lw=0, alpha=alpha or 0.3, label=label, **plotargs)
                 else:
                     color = lline[-1].get_color()
                     ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i],
-                                       lw=0, color=color, alpha=alpha, label=label, **plotargs)
+                                       lw=0, color=color, alpha=alpha or 0.3, label=label, **plotargs)
 
             elif bulk is not None:
-                if len(X_list) > 1:
-                    color = 'C'+str(obj_no)
-                else:
-                    color = 'maroon'
+                color = colors[obj_no] or 'maroon'
+
                 ax[i].plot(yscale, bulk[..., i].swapaxes(
-                    0, 1), c=color, alpha=.04)
+                    0, 1), c=color, alpha=alpha or 0.05)
             ax[i].tick_params(axis='both', which='both',
                               top=False, right=False)
             ax[i].set_xlabel(labels[selector][i])
@@ -273,9 +274,6 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None):
     plt.tight_layout()
 
 
-pplot = grplot
-
-
 def figurator(nrows=2, ncols=2, nfigs=1, **args):
     """Create list of figures and axes with (potentially) more than one graph
 
@@ -292,7 +290,7 @@ def figurator(nrows=2, ncols=2, nfigs=1, **args):
 
     Returns
     -------
-    fis, ax : list, list
+    fig, ax : list, list
         A tuple of two lists: the first list are all figure handlers, the second is a list of all the axis
     """
 
@@ -301,3 +299,23 @@ def figurator(nrows=2, ncols=2, nfigs=1, **args):
     figs = [f[0] for f in fax]
 
     return figs, axs
+
+
+def fixfigs(figs, format_date=True):
+    """Fixes layout and time scale for list of figures
+
+    Parameters
+    ----------
+    figs : list
+        List of figures
+    """
+
+    if format_date:
+        [fig.autofmt_xdate() for fig in figs]
+
+    [fig.tight_layout() for fig in figs]
+
+    return figs
+
+
+pplot = grplot
