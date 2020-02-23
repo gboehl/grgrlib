@@ -140,6 +140,10 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
                     plt.suptitle('%s' % (title))
             figs.append(fig)
     else:
+        try:
+            len(ax)
+        except TypeError:
+            ax = (ax,)
         [axis.set_prop_cycle(None) for axis in ax]
         figs = fig or None
 
