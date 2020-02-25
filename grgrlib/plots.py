@@ -9,7 +9,7 @@ from matplotlib.colors import LogNorm, SymLogNorm
 from .core import fast0
 
 
-def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, legend=None, bulk_plot=False, ax=None, fig=None, figsize=None, nlocbins=None, sigma=0.05, alpha=0.3, stat=np.nanmedian, **plotargs):
+def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, legend=None, bulk_plot=False, ax=None, fig=None, figsize=None, nlocbins=None, sigma=0.05, alpha=None, stat=np.nanmedian, **plotargs):
 
     if not isinstance(X, tuple):
         # make it a tuple
@@ -162,7 +162,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         for i in range(no_states):
 
             if line is not None:
-                lalpha = alpha if interval is None else 1
+                lalpha = alpha if (interval is None and len(X_list) == 1) else 1
                 lline = ax[i].plot(yscale, line[:, selector][:, i], styles[obj_no],
                                    color=colors[obj_no], lw=2, label=legend_tag, alpha=lalpha, **plotargs)
             if interval is not None:
@@ -183,7 +183,6 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
                     0, 1), c=color, alpha=alpha or 0.05)
             ax[i].tick_params(axis='both', which='both',
                               top=False, right=False)
-            ax[i].set_xlabel(labels[selector][i])
             if not isinstance(yscale, pd.DatetimeIndex):
                 ax[i].xaxis.set_major_locator(locator)
 
@@ -191,7 +190,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         [fig.autofmt_xdate() for fig in figs]
 
     for i in range(no_states):
-        ax[i].set_xlabel(labels[selector][i])
+        ax[i].set_title(labels[selector][i])
 
     # the notebook `inline` backend does not like `tight_layout`. But better don't use it...
     # shell = get_ipython().__class__.__name__
@@ -278,7 +277,7 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None):
     plt.tight_layout()
 
 
-def figurator(nrows=2, ncols=2, nfigs=1, **args):
+def figurator(nrows=2, ncols=2, nfigs=1, format_date=True, **args):
     """Create list of figures and axes with (potentially) more than one graph
 
     Parameters
@@ -302,24 +301,10 @@ def figurator(nrows=2, ncols=2, nfigs=1, **args):
     axs = np.array([f[1] for f in fax]).flatten()
     figs = [f[0] for f in fax]
 
-    return figs, axs
-
-
-def fixfigs(figs, format_date=True):
-    """Fixes layout and time scale for list of figures
-
-    Parameters
-    ----------
-    figs : list
-        List of figures
-    """
-
     if format_date:
         [fig.autofmt_xdate() for fig in figs]
 
-    [fig.tight_layout() for fig in figs]
-
-    return figs
+    return figs, axs
 
 
 pplot = grplot
