@@ -150,6 +150,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
     if not isinstance(yscale, pd.DatetimeIndex):
         locator = MaxNLocator(nbins=nlocbins, steps=[1, 2, 4, 8, 10])
 
+    handles = []
     for obj_no, obj in enumerate(X_list):
 
         if legend is not None:
@@ -157,6 +158,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         else:
             legend_tag = None
 
+        subhandles = []
         line, interval, bulk = obj
         # ax is a list of all the subplots
         for i in range(no_states):
@@ -165,6 +167,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
                 lalpha = alpha if (interval is None and len(X_list) == 1) else 1
                 lline = ax[i].plot(yscale, line[:, selector][:, i], styles[obj_no],
                                    color=colors[obj_no], lw=2, label=legend_tag, alpha=lalpha, **plotargs)
+                subhandles.append(lline)
             if interval is not None:
 
                 label = legend_tag if line is None else None
@@ -186,6 +189,8 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
             if not isinstance(yscale, pd.DatetimeIndex):
                 ax[i].xaxis.set_major_locator(locator)
 
+        handles.append(subhandles)
+
     if figs is not None:
         [fig.autofmt_xdate() for fig in figs]
 
@@ -200,7 +205,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
     if figs is not None:
         [fig.tight_layout() for fig in figs]
 
-    return figs, ax
+    return figs, ax, handles
 
 
 def bifplot(y, X=None, plot_dots=None, ax=None, color='k', ylabel=None, xlabel=None):
@@ -305,6 +310,18 @@ def figurator(nrows=2, ncols=2, nfigs=1, format_date=True, **args):
         [fig.autofmt_xdate() for fig in figs]
 
     return figs, axs
+
+
+def axformater(ax, mode='rotate'):
+    """Rotate ax as in `autofmt_xdate`
+    """
+
+    if mode == 'rotate':
+        return plt.setp(ax.get_xticklabels(), rotation=30, ha='right')
+    elif mode == 'off':
+        return ax.set_axis_off()
+    else:
+        raise NotImplementedError('No such modus: %s' %mode)
 
 
 pplot = grplot
