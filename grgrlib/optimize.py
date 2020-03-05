@@ -358,7 +358,8 @@ class CMAES(object):
             return False
         if np.sum(np.isinf(self.fs)) > self.params.mueff:
             if self.params.debug:
-                print('[debug:] too many infs (%s >= %s)' %(np.sum(np.isinf(self.fs)), np.ceil(self.params.mueff).astype(int)))
+                print('[debug:] too many infs (%s >= %s)' % (
+                    np.sum(np.isinf(self.fs)), np.ceil(self.params.mueff).astype(int)))
             return False
         last_fs = self.fs[np.ceil(self.params.mueff).astype(int)]
 
@@ -371,7 +372,8 @@ class CMAES(object):
         if self.counteval > self.params.maxfev:
             return 'maxfev of %1.0e.' % self.params.maxfev
         if self.params.debug:
-            print('[debug:] (passed) fmax: %8.8e, xtol: %1.3e>%1.2e; maxfev: %s<%s' %(last_fs, self.sigma * np.max(self.eigenvalues)**0.5, self.params.xtol, self.counteval, int(self.params.maxfev)))
+            print('[debug:] (passed) fmax: %8.8e, xtol: %1.3e>%1.2e; maxfev: %s<%s' % (
+                last_fs, self.sigma * np.max(self.eigenvalues)**0.5, self.params.xtol, self.counteval, int(self.params.maxfev)))
 
         return False
 

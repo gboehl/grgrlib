@@ -4,7 +4,8 @@
 import numpy as np
 from numba import njit
 
-_cond    = 1e-9
+_cond = 1e-9
+
 
 @njit(cache=True)
 def psd_func(M):
@@ -38,3 +39,43 @@ def logpdf(x, mean, cov):
     out = -0.5 * (rank * _LOG_2PI + log_det_cov + maha)
 
     return out
+
+
+def percentile(x, q=.01):
+    """Find share owned by q richest individuals"""
+
+    xsort = np.sort(x)
+    n = len(x)
+    return np.sum(xsort[-int(np.ceil(n*q)):])/np.sum(x)
+
+
+def mode(x):
+    """Find mode of (unimodal) univariate distribution"""
+
+    p, lb, ub = fast_kde(x)
+    xs = np.linspace(lb, ub, p.shape[0])
+    return xs[p.argmax()]
+
+
+def gini(x):
+    """Calculate the Gini coefficient of a numpy array
+
+    Stolen from https://github.com/oliviaguest/gini
+    """
+
+    # All values are treated equally, arrays must be 1d:
+    x = x.flatten()
+    if np.amin(x) < 0:
+        # Values cannot be negative:
+        x -= np.amin(x)
+    # Values cannot be 0:
+    x += 1e-10
+    # Values must be sorted:
+    x = np.sort(x)
+    # Index per array element:
+    index = np.arange(1, x.shape[0]+1)
+    # Number of array elements:
+    n = x.shape[0]
+
+    # Gini coefficient:
+    return ((np.sum((2 * index - n - 1) * x)) / (n * np.sum(x)))

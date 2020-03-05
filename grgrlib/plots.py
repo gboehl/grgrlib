@@ -164,7 +164,8 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         for i in range(no_states):
 
             if line is not None:
-                lalpha = alpha if (interval is None and len(X_list) == 1) else 1
+                lalpha = alpha if (
+                    interval is None and len(X_list) == 1) else 1
                 lline = ax[i].plot(yscale, line[:, selector][:, i], styles[obj_no],
                                    color=colors[obj_no], lw=2, label=legend_tag, alpha=lalpha, **plotargs)
                 subhandles.append(lline)
@@ -321,7 +322,7 @@ def axformater(ax, mode='rotate'):
     elif mode == 'off':
         return ax.set_axis_off()
     else:
-        raise NotImplementedError('No such modus: %s' %mode)
+        raise NotImplementedError('No such modus: %s' % mode)
 
 
 pplot = grplot

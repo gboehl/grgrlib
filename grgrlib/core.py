@@ -458,14 +458,6 @@ def fast_kde(x, bw=4.5):
     return density, xmin, xmax
 
 
-def mode(x):
-    """Find mode of (unimodal) univariate distribution"""
-
-    p, lb, ub = fast_kde(x)
-    xs = np.linspace(lb, ub, p.shape[0])
-    return xs[p.argmax()]
-
-
 def serializer(func):
     """Dirty hack that transforms the non-serializable function to a serializable one (when using dill)
     ...
@@ -485,6 +477,7 @@ def sabs(x, eps=1e-10):
     """absolute value but smooth around 0
     """
     return np.sqrt(x**2 + eps)
+
 
 # aliases
 map2list = map2arr
