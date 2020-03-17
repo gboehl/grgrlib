@@ -127,13 +127,15 @@ def iuc(x, y):
     return out
 
 
-def re_bc(N, d_endo):
 
-    n = N.shape[0]
+def re_bc(A, B=None, d_endo=None):
 
-    MM, PP, alp, bet, Q, Z = sl.ordqz(N, np.eye(n), sort=iuc)
+    if B is None:
+        B = np.eye(A.shape[0])
 
-    if not fast0(Q @ MM @ Z.T - N, 2):
+    MM, PP, alp, bet, Q, Z = sl.ordqz(A, B, sort=iuc)
+
+    if not fast0(Q @ MM @ Z.T - A, 2):
         raise ValueError('Numerical errors in QZ')
 
     Z21 = Z.T[-d_endo:, :d_endo]
@@ -142,16 +144,16 @@ def re_bc(N, d_endo):
     return -nl.inv(Z21) @ Z22
 
 
-def fast0(A, mode=-1):
+def fast0(A, mode=-1, rtol=1e-05, atol=1e-08):
 
     if mode == -1:
-        return np.isclose(A, 0)
+        return np.isclose(A, 0, rtol=rtol, atol=atol)
     elif mode == 0:
-        return np.isclose(A, 0).all(axis=0)
+        return np.isclose(A, 0, rtol=rtol, atol=atol).all(axis=0)
     elif mode == 1:
-        return np.isclose(A, 0).all(axis=1)
+        return np.isclose(A, 0, rtol=rtol, atol=atol).all(axis=1)
     else:
-        return np.allclose(A, 0)
+        return np.allclose(A, 0, rtol=rtol, atol=atol)
 
 
 def nearestPSD(A):
