@@ -123,9 +123,9 @@ def iuc(x, y):
     # handles (x, y) = (0, 0) too
     out[~nonzero] = False
     # rounding is necessary to avoid false round-offs
-    out[nonzero] = (abs(x[nonzero]/y[nonzero]).round(3) < 1.0)
+    # out[nonzero] = (abs(x[nonzero]/y[nonzero]).round(3) < 1.0)
+    out[nonzero] = (abs(x[nonzero]/y[nonzero]) < 1.0)
     return out
-
 
 
 def re_bc(A, B=None, d_endo=None):
@@ -133,10 +133,21 @@ def re_bc(A, B=None, d_endo=None):
     if B is None:
         B = np.eye(A.shape[0])
 
-    MM, PP, alp, bet, Q, Z = sl.ordqz(A, B, sort=iuc)
+    MM, PP, alp, bet, Q, Z = sl.ordqz(A, B, sort='iuc')
 
     if not fast0(Q @ MM @ Z.T - A, 2):
         raise ValueError('Numerical errors in QZ')
+
+    ## stolen from scipy and inverted
+    ouc = np.empty_like(alp, dtype=bool)
+    nonzero = (bet != 0)
+    # handles (x, y) = (0, 0) too
+    ouc[~nonzero] = True
+    ouc[nonzero] = abs(alp[nonzero]/bet[nonzero]) > 1.0
+
+    if d_endo:
+        if sum(ouc) > d_endo:
+            raise ValueError('B-K condition not satisfied: %s EV outside the unit circle for %s forward looking variables.' %(sum(ouc), d_endo))
 
     Z21 = Z.T[-d_endo:, :d_endo]
     Z22 = Z.T[-d_endo:, d_endo:]
