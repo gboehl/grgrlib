@@ -128,7 +128,7 @@ def iuc(x, y):
     return out
 
 
-def re_bc(A, B=None, d_endo=None):
+def re_bk(A, B=None, d_endo=None, verbose=False):
 
     if B is None:
         B = np.eye(A.shape[0])
@@ -148,9 +148,16 @@ def re_bc(A, B=None, d_endo=None):
     if d_endo:
         if sum(ouc) > d_endo:
             raise ValueError('B-K condition not satisfied: %s EV outside the unit circle for %s forward looking variables.' %(sum(ouc), d_endo))
+        if sum(ouc) < d_endo:
+            raise ValueError('B-K condition not satisfied: %s EV outside the unit circle for %s forward looking variables.' %(sum(ouc), d_endo))
+    else:
+        d_endo = sum(ouc)
 
     Z21 = Z.T[-d_endo:, :d_endo]
     Z22 = Z.T[-d_endo:, d_endo:]
+
+    if verbose:
+        print('[RE solver:] determinant is %s.' %nl.det(Z21))
 
     return -nl.inv(Z21) @ Z22
 
@@ -495,3 +502,4 @@ def sabs(x, eps=1e-10):
 # aliases
 map2list = map2arr
 indof = np.searchsorted
+re_bc = re_bk
