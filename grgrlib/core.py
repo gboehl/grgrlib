@@ -150,9 +150,9 @@ def re_bk(A, B=None, d_endo=None, verbose=False):
 
     if d_endo:
         if sum(ouc) > d_endo:
-            raise ValueError('B-K condition not satisfied: %s EV outside the unit circle for %s forward looking variables.' %(sum(ouc), d_endo))
+            raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(ouc), d_endo))
         if sum(ouc) < d_endo:
-            raise ValueError('B-K condition not satisfied: %s EV outside the unit circle for %s forward looking variables.' %(sum(ouc), d_endo))
+            raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(ouc), d_endo))
     else:
         d_endo = sum(ouc)
 
@@ -160,7 +160,7 @@ def re_bk(A, B=None, d_endo=None, verbose=False):
     Z22 = Z.T[-d_endo:, d_endo:]
 
     if verbose:
-        print('[RE solver:]'.ljust(15, ' ')+' determinant of `Z21` is %1.2e.' %nl.det(Z21))
+        print('[RE solver:]'.ljust(15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' %(nl.det(Z21),sum(ouc)))
 
     return -nl.inv(Z21) @ Z22
 
