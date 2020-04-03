@@ -138,6 +138,9 @@ def re_bk(A, B=None, d_endo=None, verbose=False):
     if not fast0(Q @ MM @ Z.T - A, 2):
         raise ValueError('Numerical errors in QZ')
 
+    if verbose > 1:
+        print('[RE solver:]'.ljust(15, ' ')+' pairs of `alp` and `bet`:\n', np.vstack((alp,bet)).T)
+
     ## stolen from scipy and inverted
     ouc = np.empty_like(alp, dtype=bool)
     nonzero = (bet != 0)
@@ -157,7 +160,7 @@ def re_bk(A, B=None, d_endo=None, verbose=False):
     Z22 = Z.T[-d_endo:, d_endo:]
 
     if verbose:
-        print('[RE solver:] determinant is %s.' %nl.det(Z21))
+        print('[RE solver:]'.ljust(15, ' ')+' determinant of `Z21` is %1.2e.' %nl.det(Z21))
 
     return -nl.inv(Z21) @ Z22
 
