@@ -118,17 +118,39 @@ def nul(n):
 
 
 def iuc(x, y):
+    """
+    Checks if pair of generalized EVs x,y is inside the unit circle. Here for legacy reasons
+    """
+
+    out = np.empty_like(x, dtype=bool)
+    nonzero = (y != 0)
+
+    # handles (x, y) = (0, 0) too
+    out[~nonzero] = False
+    out[nonzero] = (abs(x[nonzero]/y[nonzero]) < 1.0)
+
+    return out
+
+
+def ouc(x, y):
+    """
+    Checks if pair of generalized EVs x,y is outside the unit circle. Here for legacy reasons
+    """
+
+    ## stolen from scipy and inverted
     out = np.empty_like(x, dtype=bool)
     nonzero = (y != 0)
     # handles (x, y) = (0, 0) too
-    out[~nonzero] = False
-    # rounding is necessary to avoid false round-offs
-    # out[nonzero] = (abs(x[nonzero]/y[nonzero]).round(3) < 1.0)
-    out[nonzero] = (abs(x[nonzero]/y[nonzero]) < 1.0)
+    out[~nonzero] = True
+    out[nonzero] = abs(x[nonzero]/y[nonzero]) > 1.0
+
     return out
 
 
 def re_bk(A, B=None, d_endo=None, verbose=False):
+    """
+    Klein's method
+    """
 
     if B is None:
         B = np.eye(A.shape[0])
@@ -141,40 +163,36 @@ def re_bk(A, B=None, d_endo=None, verbose=False):
     if verbose > 1:
         print('[RE solver:]'.ljust(15, ' ')+' pairs of `alp` and `bet`:\n', np.vstack((alp,bet)).T)
 
-    ## stolen from scipy and inverted
-    ouc = np.empty_like(alp, dtype=bool)
-    nonzero = (bet != 0)
-    # handles (x, y) = (0, 0) too
-    ouc[~nonzero] = True
-    ouc[nonzero] = abs(alp[nonzero]/bet[nonzero]) > 1.0
+    out = ouc(alp, bet)
 
     if d_endo:
-        if sum(ouc) > d_endo:
-            raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(ouc), d_endo))
-        if sum(ouc) < d_endo:
-            raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(ouc), d_endo))
+        if sum(out) > d_endo:
+            raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(out), d_endo))
+        if sum(out) < d_endo:
+            raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(out), d_endo))
     else:
-        d_endo = sum(ouc)
+        d_endo = sum(out)
 
     Z21 = Z.T[-d_endo:, :d_endo]
     Z22 = Z.T[-d_endo:, d_endo:]
 
     if verbose:
-        print('[RE solver:]'.ljust(15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' %(nl.det(Z21),sum(ouc)))
+        print('[RE solver:]'.ljust(15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' %(nl.det(Z21),sum(out)))
 
     return -nl.inv(Z21) @ Z22
 
 
-def fast0(A, mode=-1, rtol=1e-05, atol=1e-08):
+def fast0(A, mode=-1, tol=1e-08):
 
+    con = abs(A) < tol
     if mode == -1:
-        return np.isclose(A, 0, rtol=rtol, atol=atol)
+        return con
     elif mode == 0:
-        return np.isclose(A, 0, rtol=rtol, atol=atol).all(axis=0)
+        return con.all(axis=0)
     elif mode == 1:
-        return np.isclose(A, 0, rtol=rtol, atol=atol).all(axis=1)
+        return con.all(axis=1)
     else:
-        return np.allclose(A, 0, rtol=rtol, atol=atol)
+        return con.all()
 
 
 def nearestPSD(A):
