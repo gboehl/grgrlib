@@ -169,16 +169,16 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
                 lline = ax[i].plot(yscale, line[:, selector][:, i], styles[obj_no],
                                    color=colors[obj_no], lw=2, label=legend_tag, alpha=lalpha, **plotargs)
                 subhandles.append(lline)
+
             if interval is not None:
 
                 label = legend_tag if line is None else None
-                if line is None:
-                    ax[i].fill_between(yscale, *interval[:, :, selector]
-                                       [:, :, i], lw=0, alpha=alpha or 0.3, label=label, **plotargs)
+                color = lline[-1].get_color() if line is not None else colors[obj_no]
+
+                if color:
+                    ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i], lw=0, color=color, alpha=alpha or 0.3, label=label, **plotargs)
                 else:
-                    color = lline[-1].get_color()
-                    ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i],
-                                       lw=0, color=color, alpha=alpha or 0.3, label=label, **plotargs)
+                    ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha or 0.3, label=label, **plotargs)
 
             elif bulk is not None:
                 color = colors[obj_no] or 'maroon'
@@ -324,5 +324,16 @@ def axformater(ax, mode='rotate'):
     else:
         raise NotImplementedError('No such modus: %s' % mode)
 
+
+def save_png2pdf(fig, path, **args):
+    """Save as a .png and use unix `convert` to convert to PDF.
+    """
+
+    import os
+
+    fig.savefig(path + 'png', **args)
+    os.system('convert %s.png %s.pdf' %(path,path))
+
+    return 
 
 pplot = grplot

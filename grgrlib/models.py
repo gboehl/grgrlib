@@ -13,7 +13,7 @@ bh_arg_names = ['rational', 'noise']
 bh_args = np.array([0, 0])
 
 
-# @njit(nogil=True, cache=True)
+@njit(nogil=True, cache=True)
 def bh_func(pars, state, expect, args=bh_args):
 
     rational, noise = args
