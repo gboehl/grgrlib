@@ -626,3 +626,22 @@ def broyden4d(f, x0, J_inv=None, eps=1e-4, maxiter=500, transpose_jac=False, rec
     np.warnings.filterwarnings('default')
 
     return x0, f0, cnt, mess, trace
+
+
+class GPP:
+    """Generic PYGMO problem. Assumes minimization.
+    """
+
+    name = 'GPP'
+
+    def __init__(self, func, bounds):
+
+        self.func = func
+        self.bounds = bounds
+
+    def fitness(self, x):
+        return [self.func(x)]
+
+    def get_bounds(self):
+        return self.bounds
+

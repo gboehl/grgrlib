@@ -336,4 +336,26 @@ def save_png2pdf(fig, path, **args):
 
     return 
 
+
+def spy(M, ax=None, cmap='inferno'):
+    """Visualize a matrix nicely
+    """
+    M = np.array(M)
+    s0,s1 = M.shape
+    fig_exists = False
+
+    if ax is None:
+        fig_exists = True
+        frc = max(min(s0/s1,2),.5)
+        fig, ax = plt.subplots(1, 1, figsize=(5+2/frc,frc*5+2))
+
+    ax.imshow(np.log10(1e-15+np.abs(M)), cmap=cmap)
+
+    if fig_exists:
+        fig.tight_layout()
+        return fig, ax
+
+    return ax
+
+
 pplot = grplot

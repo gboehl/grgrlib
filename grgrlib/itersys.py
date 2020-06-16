@@ -66,7 +66,7 @@ def pfi_t_func(pfunc, grid, numba_jit=True):
         return pfi_t_func_wrap
 
 
-def pfi_determinisic(func, xfromv, pars, args, grid_shape, grid, gp, eps_max, it_max):
+def pfi_determinisic(func, xfromv, pars, args, grid_shape, grid, gp, eps_max, it_max, use_norm=True, verbose=False):
 
     ndim = len(grid)
     eps = 1e9
@@ -81,7 +81,14 @@ def pfi_determinisic(func, xfromv, pars, args, grid_shape, grid, gp, eps_max, it
         svalues = values.reshape(grid_shape)
         xe = xfromv(eval_linear(grid, svalues, values, xto.LINEAR))
         values = func(pars, gp, xe, args=args)[0]
-        eps = np.linalg.norm(values - values_old)
+
+        if use_norm:
+            eps = np.linalg.norm(values - values_old)
+        else:
+            eps = np.nanmax(np.abs(values - values_old))
+
+        if verbose:
+            print(it_cnt, '- eps:', eps)
 
         if it_cnt == it_max:
             break
@@ -89,10 +96,10 @@ def pfi_determinisic(func, xfromv, pars, args, grid_shape, grid, gp, eps_max, it
     return values.reshape(grid_shape), it_cnt, eps
 
 
-def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, eps_max=1e-8, it_max=100, numba_jit=True):
+def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, eps_max=1e-8, it_max=100, numba_jit=True, **pfiargs):
     """Somewhat generic policy function iteration
 
-    For now only deterministic solutions are supported. This assumes a form of
+    For now only solutions of deterministic systems are supported. This assumes a form of
 
         v_t = f(E_t x_{t+1}, v_{t-1})
 
@@ -147,7 +154,7 @@ def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, e
     if system_type == 'deterministic':
 
         p_func, it_cnt, eps = pfi_determinisic_func(
-            func, xfromv, pars, args, grid_shape, grid, gp, eps_max, it_max)
+            func, xfromv, pars, args, grid_shape, grid, gp, eps_max, it_max, **pfiargs)
         if np.isnan(p_func).any():
             flag += 1
         if np.isnan(p_func).all():
@@ -158,7 +165,7 @@ def pfi(grid, model=None, func=None, pars=None, xfromv=None, system_type=None, e
     else:
         NotImplementedError('Only deterministic systems supported by now...')
 
-    return p_func, flag
+    return p_func, it_cnt, flag
 
 
 simulate_noeps_jit = njit(simulate_noeps, nogil=True, fastmath=True)

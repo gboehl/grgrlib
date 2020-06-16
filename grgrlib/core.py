@@ -9,23 +9,6 @@ import warnings
 import time
 
 
-class GPP:
-    """Generic PYGMO problem. Assumes maximization.
-    """
-
-    name = 'GPP'
-
-    def __init__(self, func, bounds):
-
-        self.func = func
-        self.bounds = bounds
-
-    def fitness(self, x):
-        return [-self.func(x)]
-
-    def get_bounds(self):
-        return self.bounds
-
 
 def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
@@ -151,6 +134,7 @@ def re_bk(A, B=None, d_endo=None, verbose=False):
     """
     Klein's method
     """
+    ## TODO: rename this 
 
     if B is None:
         B = np.eye(A.shape[0])
@@ -193,33 +177,6 @@ def fast0(A, mode=-1, tol=1e-08):
         return con.all(axis=1)
     else:
         return con.all()
-
-
-def nearestPSD(A):
-
-    B = (A + A.T)/2
-    H = sl.polar(B)[1]
-
-    return (B + H)/2
-
-
-def quarterlyzator(ts):
-    """Takes a series of years where quarters are expressed as decimal numbers and returns strings of the form "'YYQQ"
-    """
-    qts = []
-    for date in ts:
-
-        rest = date - int(date)
-        if rest == .25:
-            qstr = 'Q2'
-        elif rest == .5:
-            qstr = 'Q3'
-        elif rest == .75:
-            qstr = 'Q4'
-        else:
-            qstr = 'Q1'
-        qts.append("'"+str(int(date))[-2:]+qstr)
-    return qts
 
 
 def map2arr(iterator, return_np_array=True):
@@ -436,18 +393,6 @@ def shuffle(a, axis=-1):
     return res.reshape(shape)
 
 
-def blow_matrix(X, cov):
-    """Analitical stretch to transform X -> Y with Y = X + Z and Z ~ N(0,cov).
-    """
-
-    mean = np.mean(X, axis=0)
-
-    X = mean + (X-mean) @ sl.sqrtm(c2 @
-                                   nl.inv(np.cov(X.T)) + np.eye(X.shape[1]))
-
-    return X
-
-
 def fast_kde(x, bw=4.5):
     """
     A fft-based Gaussian kernel density estimate (KDE)
@@ -523,4 +468,4 @@ def sabs(x, eps=1e-10):
 # aliases
 map2list = map2arr
 indof = np.searchsorted
-re_bc = re_bk
+re_bc = re_bk # delete this

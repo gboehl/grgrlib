@@ -14,10 +14,9 @@ bh_args = np.array([0, 0])
 
 
 @njit(nogil=True, cache=True)
-def bh_func(pars, state, expect, args=bh_args):
+def bh_func(pars, state, expect, args):
 
     rational, noise = args
-
     dis, dlt, bet, gam, cos = pars
 
     xe = expect
@@ -38,20 +37,24 @@ def bh_func(pars, state, expect, args=bh_args):
         prof0 = -(xm1 - dis*xm2)*xm2 - cos
 
     prof1 = (xm1 - dis*xm2) * (gam*xm3 + bet - dis*xm2)
-    exprof0 = np.exp(dlt*prof0)
-    exprof1 = np.exp(dlt*prof1)
 
     if bet == 0:
-        exprof2 = np.zeros_like(exprof1)
+        prof2 = np.zeros_like(prof1)
     else:
         prof2 = (xm1 - dis*xm2) * (gam*xm3 - bet - dis*xm2)
-        exprof2 = np.exp(dlt*prof2)
 
-    psum = exprof0 + exprof1 + exprof2
+    # exprof0 = np.exp(dlt*prof0)
+    # exprof1 = np.exp(dlt*prof1)
+    # exprof2 = np.exp(dlt*prof2)
+    # psum = exprof0 + exprof1 + exprof2
 
-    frac0 = exprof0 / psum
-    frac1 = exprof1 / psum
-    frac2 = exprof2 / psum
+    # frac0 = exprof0/psum
+    # frac1 = exprof1/psum
+    # frac2 = exprof2/psum
+
+    frac0 = 1/(1 + np.exp(dlt*(prof1-prof0)) + bool(bet) * np.exp(dlt*(prof2-prof0)))
+    frac1 = 1/(1 + np.exp(dlt*(prof0-prof1)) + bool(bet) * np.exp(dlt*(prof2-prof1)))
+    frac2 = bool(bet) / (1 + np.exp(dlt*(prof0-prof2)) + np.exp(dlt*(prof1-prof2)))
 
     x = (frac0*xe + (frac1+frac2)*gam*xm1 + (frac1-frac2)*bet)/dis
 
