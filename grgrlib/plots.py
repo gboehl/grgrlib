@@ -331,7 +331,7 @@ def save_png2pdf(fig, path, **args):
 
     import os
 
-    fig.savefig(path + 'png', **args)
+    fig.savefig(path + '.png', **args)
     os.system('convert %s.png %s.pdf' %(path,path))
 
     return 
