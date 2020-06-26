@@ -261,6 +261,9 @@ class CMAES(object):
         except ModuleNotFoundError:
             self.randn = lambda size: np.random.normal(0, 1, size=size)
 
+        if np.any(xstart == 0):
+            xstart += 1e-8
+
         # initialize dynamic state variables
         self.sigma = self.tfunc(.5-sigma) if biject else sigma
         self.xmean = self.tfunc(xstart)
