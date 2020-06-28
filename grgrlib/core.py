@@ -179,7 +179,7 @@ def fast0(A, mode=-1, tol=1e-08):
         return con.all()
 
 
-def map2arr(iterator, return_np_array=True):
+def map2arr(iterator, return_np_array=True, check_nones=True):
     """Function to cast result from `map` to a tuple of stacked results
 
     By default, this returns numpy arrays. Automatically checks if the map object is a tuple, and if not, just one object is returned (instead of a tuple). Be warned, this does not work if the result of interest of the mapped function is a single tuple.
@@ -198,6 +198,9 @@ def map2arr(iterator, return_np_array=True):
     mode = 0
 
     for obj in iterator:
+
+        if check_nones and obj is None:
+            continue
 
         if not mode:
             if isinstance(obj, tuple):
