@@ -79,3 +79,55 @@ def gini(x):
 
     # Gini coefficient:
     return ((np.sum((2 * index - n - 1) * x)) / (n * np.sum(x)))
+
+
+def fast_kde(x, bw=4.5):
+    """
+    A fft-based Gaussian kernel density estimate (KDE)
+    The code was adapted from https://github.com/mfouesneau/faststats
+
+    Parameters
+    ----------
+    x : Numpy array or list
+    bw : float
+        Bandwidth scaling factor for the KDE. Should be larger than 0. The higher this number the
+        smoother the KDE will be. Defaults to 4.5 which is essentially the same as the Scott's rule
+        of thumb (the default rule used by SciPy).
+
+    Returns
+    -------
+    density: A gridded 1D KDE of the input points (x)
+    xmin: minimum value of x
+    xmax: maximum value of x
+    """
+
+    from scipy.signal import gaussian, convolve
+    from scipy.stats import entropy
+
+    x = np.asarray(x, dtype=float)
+    x = x[np.isfinite(x)]
+    n = len(x)
+    nx = 200
+
+    xmin, xmax = np.min(x), np.max(x)
+
+    dx = (xmax - xmin) / (nx - 1)
+    std_x = entropy((x - xmin) / dx) * bw
+    if ~np.isfinite(std_x):
+        std_x = 0.
+    grid, _ = np.histogram(x, bins=nx)
+
+    scotts_factor = n ** (-0.2)
+    kern_nx = int(scotts_factor * 2 * np.pi * std_x)
+    kernel = gaussian(kern_nx, scotts_factor * std_x)
+
+    npad = min(nx, 2 * kern_nx)
+    grid = np.concatenate([grid[npad: 0: -1], grid, grid[nx: nx - npad: -1]])
+    density = convolve(grid, kernel, mode='same')[npad: npad + nx]
+
+    norm_factor = n * dx * (2 * np.pi * std_x ** 2 * scotts_factor ** 2) ** 0.5
+
+    density = density / norm_factor
+
+    return density, xmin, xmax
+
