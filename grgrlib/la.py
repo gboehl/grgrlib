@@ -94,7 +94,7 @@ def shredder_basic(M, tol, verbose):
 
         while j < n:
 
-            a = Q.T[i:] @ M[:,j]
+            a = np.ascontiguousarray(Q.T[i:]) @ np.ascontiguousarray(M[:,j])
             do = False
             for ia in a:
                 if abs(ia) > tol:
@@ -108,7 +108,7 @@ def shredder_basic(M, tol, verbose):
                 H = np.identity(m-i)
                 H -= tau * np.outer(v,v)
 
-                Q[:,i:] = Q[:,i:] @ H
+                Q[:,i:] = np.ascontiguousarray(Q[:,i:]) @ H
 
                 if verbose:
                     print("...shredding row", j, "and col", i)
@@ -220,7 +220,10 @@ def shredder_non_pivoting(M, tol, verbose):
 
 
 def shredder(M, pivoting=None, tol=1e-11, verbose=False):
-    """The DS-decomposition. Dispatcher for sub funcs"""
+    """The QS decomposition from "Efficient Solution of Models with Occasionally Binding Constraints" (Gregor Boehl) 
+
+    The QS decomposition uses Householder reflections to bring a system in the row-echolon form. This is a dispatcher for the sub-functions.
+    """
 
     if pivoting is None:
         q = shredder_basic(M, tol, verbose)

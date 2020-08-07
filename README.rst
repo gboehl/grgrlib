@@ -11,7 +11,7 @@ The simplest way is to clone the repository and then from within the cloned fold
 
 .. code-block:: bash
 
-   pip3 install .
+   pip install .
 
 Installation with ``pip`` (elegant via ``git``\ )
 -------------------------------------------------------

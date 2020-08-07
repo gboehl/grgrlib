@@ -9,7 +9,6 @@ import warnings
 import time
 
 
-
 def eig(M):
     return np.sort(np.abs(nl.eig(M)[0]))[::-1]
 
@@ -50,6 +49,7 @@ def tsvd(A, threshold=0.99999, avoid_pathological=True):
     - avoid_pathological: avoid truncating (e.g.) the identity matrix.
       NB: only applies for float threshold.
     """
+
     M, N = A.shape
     full_matrices = False
 
