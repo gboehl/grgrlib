@@ -130,7 +130,7 @@ def ouc(x, y):
     return out
 
 
-def re_bk(A, B=None, d_endo=None, verbose=False):
+def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
     """
     Klein's method
     """
@@ -149,13 +149,20 @@ def re_bk(A, B=None, d_endo=None, verbose=False):
 
     out = ouc(alp, bet)
 
-    if d_endo:
-        if sum(out) > d_endo:
-            raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(out), d_endo))
-        if sum(out) < d_endo:
-            raise ValueError('B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(out), d_endo))
-    else:
+    if not d_endo:
         d_endo = sum(out)
+    else:
+        if sum(out) > d_endo:
+            mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(out), d_endo)
+        elif sum(out) < d_endo:
+            mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(out), d_endo)
+        else:
+            mess = ''
+
+        if mess and not force:
+            raise ValueError(mess)
+        elif mess and verbose:
+            print(mess)
 
     Z21 = Z.T[-d_endo:, :d_endo]
     Z22 = Z.T[-d_endo:, d_endo:]
@@ -382,4 +389,3 @@ def sabs(x, eps=1e-10):
 # aliases
 map2list = map2arr
 indof = np.searchsorted
-re_bc = re_bk # delete this

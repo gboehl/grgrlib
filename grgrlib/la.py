@@ -141,8 +141,8 @@ def shredder_pivoting(M, tol, verbose):
             if np.any(np.abs(M[i:,k]) > tol):
                 if k != i:
                     # move columns 
-                    M[:,np.array([j,k])] = M[:,np.array([k,j])]
-                    P[np.array([j,k])] = P [np.array([k,j])]
+                    M[:,np.array([i,k])] = M[:,np.array([k,i])]
+                    P[np.array([i,k])] = P [np.array([k,i])]
                 break
             k += 1
 
@@ -151,7 +151,6 @@ def shredder_pivoting(M, tol, verbose):
             if np.any(np.abs(M[i:,j]) > tol):
 
                 # apply Householder transformation
-                # a = np.reshape(np.ascontiguousarray(M[i:, j]), (-1,1))
                 a = M[i:, j]
                 v, tau = householder_reflection(a)
 
@@ -201,7 +200,7 @@ def shredder_non_pivoting(M, tol, verbose):
             if np.any(np.abs(M[i:,j]) > tol):
 
                 # apply Householder transformation
-                a = np.reshape(np.ascontiguousarray(M[i:, j]), (-1,1))
+                a = M[i:, j]
                 v, tau = householder_reflection(a)
 
                 H = np.identity(m-i)
