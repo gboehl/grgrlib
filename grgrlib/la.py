@@ -34,6 +34,24 @@ def householder_reflection(x):
     return v, tau
 
 
+@njit(cache=True, nogil=True, fastmath=True)
+def householder_reflection_right(x):
+    alpha = x[-1]
+    s = np.linalg.norm(x[:-1])**2
+    v = x.copy()
+
+    if s == 0:
+        tau = 0.
+    else:
+        t = np.sqrt(alpha**2 + s)
+        v[-1] = alpha - t if alpha <= 0 else -s / (alpha + t)
+
+        tau = 2 * v[-1]**2 / (s + v[-1]**2)
+        v /= v[-1]
+
+    return v, tau
+
+
 def qr_gr(A):
     """Perform QR decomposition of matrix A using Givens rotation."""
     num_rows, num_cols = np.shape(A)
@@ -65,21 +83,47 @@ def qr_gr(A):
 def qr_hh(A):
     """Perform QR decomposition of matrix A using Householder reflections.
     """
-    m,n = A.shape
 
-    R = A.copy()
-    Q = np.identity(m)
+    M = A.copy()
+    m,n = M.shape
+    Q = np.eye(m)
 
-    for j in range(0, min(m,n)):
-        # Apply Householder transformation.
-        v, tau = householder_reflection(R[j:, j, np.newaxis])
+    for i in range(min(m,n)):
 
-        H = np.identity(m)
-        H[j:, j:] -= tau * (v @ v.T)
-        R = H @ R
-        Q = H @ Q
+        a = M[i:,i]
 
-    return Q[:n].T, np.triu(R[:n])
+        v, tau = householder_reflection(a)
+
+        H = np.identity(m-i)
+        H -= tau * np.outer(v,v)
+
+        M[i:] = H @ M[i:]
+        Q[:,i:] = Q[:,i:] @ H
+
+    return Q, M
+
+
+def rq_hh(A):
+    """Perform RQ decomposition of matrix A using Householder reflections.
+    """
+
+    M = A.copy()
+    m,n = M.shape
+    Q = np.eye(n)
+
+    for i in range(min(m,n)):
+
+        a = M[-1-i,:n-i]
+
+        v, tau = householder_reflection_right(a)
+
+        H = np.identity(n-i)
+        H -= tau * np.outer(v,v)
+
+        M[:,:n-i] = M[:,:n-i] @ H
+        Q[:n-i,:] = H @ Q[:n-i,:]
+
+    return Q, M
 
 
 @njit(cache=True, nogil=True)

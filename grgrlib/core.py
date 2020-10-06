@@ -5,8 +5,12 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import scipy.stats as ss
-import warnings
 import time
+
+
+def H(arr):
+    """conjugate transpose"""
+    return arr.T.conj()
 
 
 def eig(M):
@@ -117,7 +121,7 @@ def iuc(x, y):
 
 def ouc(x, y):
     """
-    Checks if pair of generalized EVs x,y is outside the unit circle. Here for legacy reasons
+    Check if pair of generalized EVs x,y is outside the unit circle. Here for legacy reasons
     """
 
     ## stolen from scipy and inverted
