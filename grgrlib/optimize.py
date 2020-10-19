@@ -5,6 +5,12 @@ import time
 import numpy as np
 from grgrlib import map2arr
 
+try:
+    import chaospy
+    chaospy_loaded = True
+except ModuleNotFoundError:
+    chaospy_loaded = False
+
 
 def cmaes(objective_fct, xstart, sigma, popsize=None, mapper=None, biject=False, verbose=100, **args):
     """UI access point to `CMAES` to minimize `objective_fct`
@@ -251,15 +257,17 @@ class CMAES(object):
         # define bijection function
         self.tfunc = (lambda x: np.log(1/x - 1)) if biject else (lambda x: x)
 
+        size = (self.params.lam, self.params.ndim)
         # use low-discrepancy series
-        try:
-            if not self.params.rule:
-                raise ModuleNotFoundError()
-            import chaospy
-            self.randn = lambda size: chaospy.MvNormal(np.zeros(size[1]), np.eye(
-                size[1])).sample(size=size[0], rule=self.params.rule).T
-        except ModuleNotFoundError:
-            self.randn = lambda size: np.random.normal(0, 1, size=size)
+
+        if chaospy_loaded and self.params.rule:
+            dist = chaospy.MvNormal(
+                np.zeros(self.params.ndim), np.eye(self.params.ndim))
+            self.randn = lambda: dist.sample(
+                size=self.params.lam, rule=self.params.rule).T
+        else:
+            self.randn = lambda: np.random.normal(
+                0, 1, size=(self.params.lam, self.params.ndim))
 
         if np.any(xstart == 0):
             xstart += 1e-8
@@ -291,8 +299,7 @@ class CMAES(object):
         self.condition_number = np.linalg.cond(self.C)
         self.invsqrt = np.linalg.inv(np.linalg.cholesky(self.C))
 
-        z = self.sigma * self.eigenvalues**0.5 * \
-            self.randn(size=(par.lam, par.ndim))
+        z = self.sigma * self.eigenvalues**0.5 * self.randn()
         y = self.eigenbasis @ z.T
         xs = self.xmean + y.T
 
@@ -647,4 +654,3 @@ class GPP:
 
     def get_bounds(self):
         return self.bounds
-

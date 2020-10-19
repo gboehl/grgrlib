@@ -124,7 +124,7 @@ def ouc(x, y):
     Check if pair of generalized EVs x,y is outside the unit circle. Here for legacy reasons
     """
 
-    ## stolen from scipy and inverted
+    # stolen from scipy and inverted
     out = np.empty_like(x, dtype=bool)
     nonzero = (y != 0)
     # handles (x, y) = (0, 0) too
@@ -138,7 +138,7 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
     """
     Klein's method
     """
-    ## TODO: rename this 
+    # TODO: rename this
 
     if B is None:
         B = np.eye(A.shape[0])
@@ -149,7 +149,8 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
         raise ValueError('Numerical errors in QZ')
 
     if verbose > 1:
-        print('[RE solver:]'.ljust(15, ' ')+' pairs of `alp` and `bet`:\n', np.vstack((alp,bet)).T)
+        print('[RE solver:]'.ljust(15, ' ') +
+              ' pairs of `alp` and `bet`:\n', np.vstack((alp, bet)).T)
 
     out = ouc(alp, bet)
 
@@ -157,9 +158,11 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
         d_endo = sum(out)
     else:
         if sum(out) > d_endo:
-            mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(out), d_endo)
+            mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (
+                sum(out), d_endo)
         elif sum(out) < d_endo:
-            mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' %(sum(out), d_endo)
+            mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (
+                sum(out), d_endo)
         else:
             mess = ''
 
@@ -172,7 +175,8 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
     Z22 = Z.T[-d_endo:, d_endo:]
 
     if verbose:
-        print('[RE solver:]'.ljust(15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' %(nl.det(Z21),sum(out)))
+        print('[RE solver:]'.ljust(
+            15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' % (nl.det(Z21), sum(out)))
 
     return -nl.inv(Z21) @ Z22
 

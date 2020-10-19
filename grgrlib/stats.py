@@ -130,4 +130,3 @@ def fast_kde(x, bw=4.5):
     density = density / norm_factor
 
     return density, xmin, xmax
-

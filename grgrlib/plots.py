@@ -176,9 +176,11 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
                 color = lline[-1].get_color() if line is not None else colors[obj_no]
 
                 if color:
-                    ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i], lw=0, color=color, alpha=alpha or 0.3, label=label, **plotargs)
+                    ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i],
+                                       lw=0, color=color, alpha=alpha or 0.3, label=label, **plotargs)
                 else:
-                    ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i], lw=0, alpha=alpha or 0.3, label=label, **plotargs)
+                    ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i],
+                                       lw=0, alpha=alpha or 0.3, label=label, **plotargs)
 
             elif bulk is not None:
                 color = colors[obj_no] or 'maroon'
@@ -283,7 +285,7 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None):
     plt.tight_layout()
 
 
-def figurator(nrows=2, ncols=2, nfigs=1, format_date=True, **args):
+def figurator(nrows=2, ncols=2, nfigs=1, tight_layout=True, format_date=True, **args):
     """Create list of figures and axes with (potentially) more than one graph
 
     Parameters
@@ -310,6 +312,9 @@ def figurator(nrows=2, ncols=2, nfigs=1, format_date=True, **args):
     if format_date:
         [fig.autofmt_xdate() for fig in figs]
 
+    if tight_layout:
+        [fig.tight_layout() for fig in figs]
+
     return figs, axs
 
 
@@ -332,22 +337,22 @@ def save_png2pdf(fig, path, **args):
     import os
 
     fig.savefig(path + '.png', **args)
-    os.system('convert %s.png %s.pdf' %(path,path))
+    os.system('convert %s.png %s.pdf' % (path, path))
 
-    return 
+    return
 
 
 def spy(M, ax=None, cmap='inferno'):
     """Visualize a matrix nicely
     """
     M = np.array(M)
-    s0,s1 = M.shape
+    s0, s1 = M.shape
     fig_exists = False
 
     if ax is None:
         fig_exists = True
-        frc = max(min(s0/s1,2),.5)
-        fig, ax = plt.subplots(1, 1, figsize=(5+2/frc,frc*5+2))
+        frc = max(min(s0/s1, 2), .5)
+        fig, ax = plt.subplots(1, 1, figsize=(5+2/frc, frc*5+2))
 
     ax.imshow(np.log10(1e-15+np.abs(M)), cmap=cmap)
 

@@ -85,20 +85,20 @@ def qr_hh(A):
     """
 
     M = A.copy()
-    m,n = M.shape
+    m, n = M.shape
     Q = np.eye(m)
 
-    for i in range(min(m,n)):
+    for i in range(min(m, n)):
 
-        a = M[i:,i]
+        a = M[i:, i]
 
         v, tau = householder_reflection(a)
 
         H = np.identity(m-i)
-        H -= tau * np.outer(v,v)
+        H -= tau * np.outer(v, v)
 
         M[i:] = H @ M[i:]
-        Q[:,i:] = Q[:,i:] @ H
+        Q[:, i:] = Q[:, i:] @ H
 
     return Q, M
 
@@ -108,20 +108,20 @@ def rq_hh(A):
     """
 
     M = A.copy()
-    m,n = M.shape
+    m, n = M.shape
     Q = np.eye(n)
 
-    for i in range(min(m,n)):
+    for i in range(min(m, n)):
 
-        a = M[-1-i,:n-i]
+        a = M[-1-i, :n-i]
 
         v, tau = householder_reflection_right(a)
 
         H = np.identity(n-i)
-        H -= tau * np.outer(v,v)
+        H -= tau * np.outer(v, v)
 
-        M[:,:n-i] = M[:,:n-i] @ H
-        Q[:n-i,:] = H @ Q[:n-i,:]
+        M[:, :n-i] = M[:, :n-i] @ H
+        Q[:n-i, :] = H @ Q[:n-i, :]
 
     return Q, M
 
@@ -129,16 +129,16 @@ def rq_hh(A):
 @njit(cache=True, nogil=True)
 def shredder_basic(M, tol, verbose):
 
-    m,n = M.shape
+    m, n = M.shape
     Q = np.eye(m)
 
     j = 0
 
-    for i in range(min(m,n)):
+    for i in range(min(m, n)):
 
         while j < n:
 
-            a = np.ascontiguousarray(Q.T[i:]) @ np.ascontiguousarray(M[:,j])
+            a = np.ascontiguousarray(Q.T[i:]) @ np.ascontiguousarray(M[:, j])
             do = False
             for ia in a:
                 if abs(ia) > tol:
@@ -150,9 +150,9 @@ def shredder_basic(M, tol, verbose):
                 v, tau = householder_reflection(a)
 
                 H = np.identity(m-i)
-                H -= tau * np.outer(v,v)
+                H -= tau * np.outer(v, v)
 
-                Q[:,i:] = np.ascontiguousarray(Q[:,i:]) @ H
+                Q[:, i:] = np.ascontiguousarray(Q[:, i:]) @ H
 
                 if verbose:
                     print("...shredding row", j, "and col", i)
@@ -168,40 +168,39 @@ def shredder_basic(M, tol, verbose):
 def shredder_pivoting(M, tol, verbose):
     """The DS-decomposition with pivoting"""
 
-    m,n = M.shape
+    m, n = M.shape
     M = M.copy().astype(np.float64)
     Q = np.eye(m)
     P = np.arange(n)
 
     j = 0
 
-    for i in range(min(m,n)):
+    for i in range(min(m, n)):
 
         # pivoting loop
         k = i
         while True:
             if k == n:
                 break
-            if np.any(np.abs(M[i:,k]) > tol):
+            if np.any(np.abs(M[i:, k]) > tol):
                 if k != i:
-                    # move columns 
-                    M[:,np.array([i,k])] = M[:,np.array([k,i])]
-                    P[np.array([i,k])] = P [np.array([k,i])]
+                    # move columns
+                    M[:, np.array([i, k])] = M[:, np.array([k, i])]
+                    P[np.array([i, k])] = P[np.array([k, i])]
                 break
             k += 1
 
-
         while j < n:
-            if np.any(np.abs(M[i:,j]) > tol):
+            if np.any(np.abs(M[i:, j]) > tol):
 
                 # apply Householder transformation
                 a = M[i:, j]
                 v, tau = householder_reflection(a)
 
                 H = np.identity(m-i)
-                H -= tau * np.outer(v,v)
+                H -= tau * np.outer(v, v)
                 M[i:] = H @ M[i:]
-                Q[:,i:] = np.ascontiguousarray(Q[:,i:]) @ H
+                Q[:, i:] = np.ascontiguousarray(Q[:, i:]) @ H
 
                 if verbose:
                     print("...shredding row", j, "and col", i)
@@ -210,47 +209,47 @@ def shredder_pivoting(M, tol, verbose):
             else:
                 j += 1
 
-    return Q,M,P
+    return Q, M, P
 
 
 @njit(cache=True, nogil=True)
 def shredder_non_pivoting(M, tol, verbose):
     """The DS-decomposition with anti-pivoting"""
 
-    m,n = M.shape
+    m, n = M.shape
     M = M.copy().astype(np.float64)
     Q = np.eye(m)
     P = np.arange(n)
 
     j = 0
 
-    for i in range(min(m,n)):
+    for i in range(min(m, n)):
 
         # anti-pivoting
         # for each i move those columns forward that do not need transformation
 
-        for k in range(j,n):
-            if np.all(np.abs(M[i:,k]) < tol):
-                # move columns 
+        for k in range(j, n):
+            if np.all(np.abs(M[i:, k]) < tol):
+                # move columns
                 if k != j:
-                    M[:,np.array([j,k])] = M[:,np.array([k,j])]
-                    P[np.array([j,k])] = P [np.array([k,j])]
+                    M[:, np.array([j, k])] = M[:, np.array([k, j])]
+                    P[np.array([j, k])] = P[np.array([k, j])]
 
                 if verbose:
-                    print('...switching rows', j, 'and',k)
+                    print('...switching rows', j, 'and', k)
                 j += 1
 
         while j < n:
-            if np.any(np.abs(M[i:,j]) > tol):
+            if np.any(np.abs(M[i:, j]) > tol):
 
                 # apply Householder transformation
                 a = M[i:, j]
                 v, tau = householder_reflection(a)
 
                 H = np.identity(m-i)
-                H -= tau * np.outer(v,v)
+                H -= tau * np.outer(v, v)
                 M[i:] = H @ M[i:]
-                Q[:,i:] = np.ascontiguousarray(Q[:,i:]) @ H
+                Q[:, i:] = np.ascontiguousarray(Q[:, i:]) @ H
 
                 if verbose:
                     print("...shredding row", j, "and col", i)
@@ -259,7 +258,7 @@ def shredder_non_pivoting(M, tol, verbose):
             else:
                 j += 1
 
-    return Q,M,P
+    return Q, M, P
 
 
 def shredder(M, pivoting=None, tol=1e-11, verbose=False):
