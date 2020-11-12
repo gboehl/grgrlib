@@ -5,6 +5,7 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import scipy.stats as ss
+from numba import njit
 import time
 
 
@@ -179,6 +180,36 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
             15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' % (nl.det(Z21), sum(out)))
 
     return -nl.inv(Z21) @ Z22
+
+
+# @njit(cache=True, nogil=True, fastmath=True, parallel=False)
+def speed_kills(A, B, dimp, dimq):
+    # TODO: check for BC
+
+    q, A = nl.qr(A)
+    B = q.T @ B
+
+    B11i = nl.inv(B[dimq:,dimq:])
+
+    A[dimq:] = B11i @ A[dimq:]
+    B[dimq:] = B11i @ B[dimq:]
+
+    A[:dimq] -= B[:dimq,dimq:] @ A[dimq:]
+    B[:dimq,:dimq] -= B[:dimq,dimq:] @ B[dimq:,:dimq]
+
+    B[:dimq,dimq:] = 0
+    B[dimq:,dimq:] = np.eye(dimp)
+
+    g = -B[dimq:,:dimq]
+    cond = True
+
+    while cond:
+        gn = A[dimq:,dimq:] @ g @ nl.inv(A[:dimq,:dimq] + A[:dimq,dimq:] @ g) @ B[:dimq,:dimq] - B[dimq:,:dimq]
+        norm = np.max(np.abs(gn-g))
+        cond = norm > 1e-4
+        g = gn
+
+    return g, -nl.inv(A[:dimq,:dimq] + A[:dimq,dimq:] @ g) @ B[:dimq,:dimq]
 
 
 def fast0(A, mode=-1, tol=1e-08):
@@ -397,3 +428,5 @@ def sabs(x, eps=1e-10):
 # aliases
 map2list = map2arr
 indof = np.searchsorted
+
+

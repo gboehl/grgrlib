@@ -123,7 +123,14 @@ def rq_hh(A):
         M[:, :n-i] = M[:, :n-i] @ H
         Q[:n-i, :] = H @ Q[:n-i, :]
 
-    return Q, M
+    return M, Q
+
+
+def ql(M):
+    """Perform QL decomposition of matrix A using scipy
+    """
+    r, q = sl.rq(M.T)
+    return q.T, r.T
 
 
 @njit(cache=True, nogil=True)
