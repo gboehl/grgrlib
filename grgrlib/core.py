@@ -183,36 +183,42 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
     return -nl.inv(Z21) @ Z22
 
 
-@njit(cache=True, nogil=True)
-def speed_kills(A, B, dimp, dimq):
-    # TODO: check for BC
+def speed_kills(A, B, dimp, dimq, tol=1e-4, check=False):
+    """Improved linear time iteration
+    """
+
+    if check:
+        evs = sl.eigvals(A,B)
+        assert sum(abs(evs) < 1) == dimp
 
     q, A = nl.qr(A)
-    B = aca(q.T) @ aca(B)
+    B = q.T @ B
 
     B11i = nl.inv(B[dimq:,dimq:])
 
-    A[dimq:] = B11i @ aca(A[dimq:])
-    B[dimq:] = B11i @ aca(B[dimq:])
+    A[dimq:] = B11i @ A[dimq:]
+    B[dimq:] = B11i @ B[dimq:]
 
-    A[:dimq] -= aca(B[:dimq,dimq:]) @ aca(A[dimq:])
-    B[:dimq,:dimq] -= aca(B[:dimq,dimq:]) @ aca(B[dimq:,:dimq])
+    A[:dimq] -= B[:dimq,dimq:] @ A[dimq:]
+    B[:dimq,:dimq] -= B[:dimq,dimq:] @ B[dimq:,:dimq]
 
     B[:dimq,dimq:] = 0
     B[dimq:,dimq:] = np.eye(dimp)
 
-    g = -aca(B[dimq:,:dimq])
-    cond = True
+    A1 = A[:dimq,:dimq] 
+    A3 = A[dimq:,dimq:]
+    A2 = A[:dimq,dimq:]
+    B1 = B[:dimq,:dimq]
+    B2 = B[dimq:,:dimq]
 
-    A3 = aca(A[dimq:,dimq:]) 
-    A2 = aca(A[:dimq,dimq:])
-    B1 = aca(B[:dimq,:dimq])
+    g = -B2
 
-    while cond:
-        gn = A3 @ g @ nl.inv(A[:dimq,:dimq] + A2 @ g) @ B1 - B[dimq:,:dimq]
+    norm = tol + 1
+
+    while norm > tol:
+        gn = g
+        g = A3 @ g @ nl.inv(A1 + A2 @ g) @ B1 - B2
         norm = np.max(np.abs(gn-g))
-        cond = norm > 1e-4
-        g = gn
 
     return g, -nl.inv(A[:dimq,:dimq] + A2 @ g) @ B1
 
