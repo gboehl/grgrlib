@@ -8,6 +8,7 @@ import scipy.stats as ss
 from numba import njit
 import time
 
+aca = np.ascontiguousarray
 
 def H(arr):
     """conjugate transpose"""
@@ -182,34 +183,38 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
     return -nl.inv(Z21) @ Z22
 
 
-# @njit(cache=True, nogil=True, fastmath=True, parallel=False)
+@njit(cache=True, nogil=True)
 def speed_kills(A, B, dimp, dimq):
     # TODO: check for BC
 
     q, A = nl.qr(A)
-    B = q.T @ B
+    B = aca(q.T) @ aca(B)
 
     B11i = nl.inv(B[dimq:,dimq:])
 
-    A[dimq:] = B11i @ A[dimq:]
-    B[dimq:] = B11i @ B[dimq:]
+    A[dimq:] = B11i @ aca(A[dimq:])
+    B[dimq:] = B11i @ aca(B[dimq:])
 
-    A[:dimq] -= B[:dimq,dimq:] @ A[dimq:]
-    B[:dimq,:dimq] -= B[:dimq,dimq:] @ B[dimq:,:dimq]
+    A[:dimq] -= aca(B[:dimq,dimq:]) @ aca(A[dimq:])
+    B[:dimq,:dimq] -= aca(B[:dimq,dimq:]) @ aca(B[dimq:,:dimq])
 
     B[:dimq,dimq:] = 0
     B[dimq:,dimq:] = np.eye(dimp)
 
-    g = -B[dimq:,:dimq]
+    g = -aca(B[dimq:,:dimq])
     cond = True
 
+    A3 = aca(A[dimq:,dimq:]) 
+    A2 = aca(A[:dimq,dimq:])
+    B1 = aca(B[:dimq,:dimq])
+
     while cond:
-        gn = A[dimq:,dimq:] @ g @ nl.inv(A[:dimq,:dimq] + A[:dimq,dimq:] @ g) @ B[:dimq,:dimq] - B[dimq:,:dimq]
+        gn = A3 @ g @ nl.inv(A[:dimq,:dimq] + A2 @ g) @ B1 - B[dimq:,:dimq]
         norm = np.max(np.abs(gn-g))
         cond = norm > 1e-4
         g = gn
 
-    return g, -nl.inv(A[:dimq,:dimq] + A[:dimq,dimq:] @ g) @ B[:dimq,:dimq]
+    return g, -nl.inv(A[:dimq,:dimq] + A2 @ g) @ B1
 
 
 def fast0(A, mode=-1, tol=1e-08):
