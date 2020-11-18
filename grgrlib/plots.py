@@ -334,6 +334,10 @@ def save_png2pdf(fig, path, **args):
     """Save as a .png and use unix `convert` to convert to PDF.
     """
 
+    if not path:
+        print('[preprocess:]'.ljust(15, ' ') + " no path provided, I'll pass...")
+        return
+
     import os
 
     fig.savefig(path + '.png', **args)
