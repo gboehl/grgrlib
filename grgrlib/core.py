@@ -10,6 +10,7 @@ import time
 
 aca = np.ascontiguousarray
 
+
 def H(arr):
     """conjugate transpose"""
     return arr.T.conj()
@@ -135,12 +136,68 @@ def ouc(x, y):
 
     return out
 
+def klein(A, B=None, nstates=None, verbose=False, force=False):
+    """
+    Klein's method
+    """
+
+    st = time.time()
+    if B is None:
+        B = np.eye(A.shape[0])
+
+    SS, TT, alp, bet, Q, Z = sl.ordqz(A, B, sort='ouc')
+
+
+    if np.any(np.isclose(alp, bet)):
+        mess0 = 'Warning: unit root detected! '
+    else:
+        mess0 = ''
+
+    # check for precision
+    if not fast0(Q @ SS @ Z.T - A, 2):
+        raise ValueError('Numerical errors in QZ')
+
+    if verbose > 1:
+        print('[RE solver:]'.ljust(15, ' ') + ' Generalized EVs: ', np.sort(np.abs(alp/bet)))
+
+    # check for Blanchard-Kahn
+    out = ouc(alp, bet)
+
+    if not nstates:
+        nstates = sum(out)
+    else:
+        if not nstates == sum(out):
+            mess1 = 'B-K condition not satisfied: %s states but %s Evs inside the unit circle. ' % (nstates, sum(out))
+        else:
+            mess1 = ''
+
+        if mess1 and not force:
+            raise ValueError(mess1+mess0)
+        elif mess1 and verbose:
+            print(mess1+mess0)
+
+    S11 = SS[:nstates, :nstates]
+    T11 = TT[:nstates, :nstates]
+
+    Z11 = Z[:nstates, :nstates]
+    Z21 = Z[nstates:, :nstates]
+
+    omg = Z21 @ sl.inv(Z11)
+    lam = Z11 @ sl.inv(S11) @ T11 @ sl.inv(Z11)
+
+    if verbose:
+        print('[RE solver:]'.ljust(
+            15, ' ')+' Done in %s. Determinant of `Z11` is %1.2e. There are %s EVs o.u.c. ' % (np.round((time.time() - st), 5), nl.det(Z11), sum(out)) + mess0)
+
+    return omg, lam
+
 
 def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
     """
     Klein's method
     """
     # TODO: rename this
+    print('[RE solver:]'.ljust(15, ' ') + ' `re_bk` is depreciated. Use `klein` instead.')
 
     if B is None:
         B = np.eye(A.shape[0])
@@ -152,7 +209,7 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
 
     if verbose > 1:
         print('[RE solver:]'.ljust(15, ' ') +
-              ' pairs of `alp` and `bet`:\n', np.vstack((alp, bet)).T)
+              ' Pairs of `alp` and `bet`:\n', np.vstack((alp, bet)).T)
 
     out = ouc(alp, bet)
 
@@ -178,49 +235,51 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
 
     if verbose:
         print('[RE solver:]'.ljust(
-            15, ' ')+' determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' % (nl.det(Z21), sum(out)))
+            15, ' ')+' Determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' % (nl.det(Z21), sum(out)))
 
     return -nl.inv(Z21) @ Z22
 
 
-def speed_kills(A, B, dimp, dimq, tol=1e-4, check=False):
+@njit(cache=True, nogil=True, fastmath=True)
+def speed_kills(A, B, dimp, dimq, tol=1e-6, max_iter=300):
     """Improved linear time iteration
     """
-
-    if check:
-        evs = sl.eigvals(A,B)
-        assert sum(abs(evs) < 1) == dimp
 
     q, A = nl.qr(A)
     B = q.T @ B
 
-    B11i = nl.inv(B[dimq:,dimq:])
+    B11i = nl.inv(B[dimq:, dimq:])
 
     A[dimq:] = B11i @ A[dimq:]
     B[dimq:] = B11i @ B[dimq:]
 
-    A[:dimq] -= B[:dimq,dimq:] @ A[dimq:]
-    B[:dimq,:dimq] -= B[:dimq,dimq:] @ B[dimq:,:dimq]
+    A[:dimq] -= B[:dimq, dimq:] @ A[dimq:]
+    B[:dimq, :dimq] -= B[:dimq, dimq:] @ B[dimq:, :dimq]
 
-    B[:dimq,dimq:] = 0
-    B[dimq:,dimq:] = np.eye(dimp)
+    B[:dimq, dimq:] = 0
+    B[dimq:, dimq:] = np.eye(dimp)
 
-    A1 = A[:dimq,:dimq] 
-    A3 = A[dimq:,dimq:]
-    A2 = A[:dimq,dimq:]
-    B1 = B[:dimq,:dimq]
-    B2 = B[dimq:,:dimq]
+    A1 = A[:dimq, :dimq]
+    A3 = A[dimq:, dimq:]
+    A2 = A[:dimq, dimq:]
+    B1 = B[:dimq, :dimq]
+    B2 = B[dimq:, :dimq]
 
     g = -B2
 
     norm = tol + 1
+    icnt = 0
 
-    while norm > tol:
+    while norm > tol and icnt < max_iter:
+        icnt += 1
         gn = g
-        g = A3 @ g @ nl.inv(A1 + A2 @ g) @ B1 - B2
+        g = A3 @ g @ nl.solve(A1 + A2 @ g, B1) - B2
         norm = np.max(np.abs(gn-g))
 
-    return g, -nl.inv(A[:dimq,:dimq] + A2 @ g) @ B1
+    if icnt == max_iter:
+        raise Exception("iteration did not converge")
+
+    return g, -nl.inv(A[:dimq, :dimq] + A2 @ g) @ B1
 
 
 def fast0(A, mode=-1, tol=1e-08):
@@ -439,5 +498,3 @@ def sabs(x, eps=1e-10):
 # aliases
 map2list = map2arr
 indof = np.searchsorted
-
-
