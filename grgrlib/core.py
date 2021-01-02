@@ -5,7 +5,6 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import scipy.stats as ss
-from numba import njit
 import time
 
 aca = np.ascontiguousarray
@@ -240,8 +239,34 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
     return -nl.inv(Z21) @ Z22
 
 
-@njit(cache=True, nogil=True, fastmath=True)
-def speed_kills(A, B, dimp, dimq, tol=1e-6, max_iter=300):
+def lti(AA, BB, CC, dimp, dimq, tol=1e-6, check=False, verbose=False):
+    """standard linear time iteration
+    """
+
+    if check:
+        pass
+
+    g = np.eye(dimq+dimp)
+
+    norm = tol + 1
+
+    icnt = 0
+    while norm > tol:
+        gn = g
+        g = -nl.solve(BB + AA @ g, CC)
+        norm = np.max(np.abs(gn-g))
+        icnt += 1
+
+    if verbose:
+        print(icnt)
+
+    omg = g[dimq:,:dimq]
+    lam = g[:dimq,:dimq]
+
+    return omg, lam
+
+
+def speed_kills(A, B, dimp, dimq, selector=None, tol=1e-6, check=False, verbose=False):
     """Improved linear time iteration
     """
 
@@ -270,11 +295,18 @@ def speed_kills(A, B, dimp, dimq, tol=1e-6, max_iter=300):
     norm = tol + 1
     icnt = 0
 
-    while norm > tol and icnt < max_iter:
-        icnt += 1
+    icnt = 0
+    while norm > tol:
         gn = g
         g = A3 @ g @ nl.solve(A1 + A2 @ g, B1) - B2
-        norm = np.max(np.abs(gn-g))
+        if selector is not None:
+            norm = np.max(np.abs(gn-g)[selector])
+        else:
+            norm = np.max(np.abs(gn-g))
+        icnt += 1
+
+    if verbose:
+        print(icnt)
 
     if icnt == max_iter:
         raise Exception("iteration did not converge")
