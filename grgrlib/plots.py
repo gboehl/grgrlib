@@ -335,7 +335,7 @@ def save_png2pdf(fig, path, **args):
     """
 
     if not path:
-        print('[preprocess:]'.ljust(15, ' ') + " no path provided, I'll pass...")
+        print('[save_png2pdf:]'.ljust(15, ' ') + " No path provided, I'll pass...")
         return
 
     import os
