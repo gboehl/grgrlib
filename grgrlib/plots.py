@@ -167,7 +167,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
                 lalpha = alpha if (
                     interval is None and len(X_list) == 1) else 1
                 lline = ax[i].plot(yscale, line[:, selector][:, i], styles[obj_no],
-                                   color=colors[obj_no], lw=2, label=legend_tag, alpha=lalpha, **plotargs)
+                                   color=colors[obj_no], label=legend_tag, alpha=lalpha, **plotargs)
                 subhandles.append(lline)
 
             if interval is not None:
@@ -247,7 +247,7 @@ def bifplot(y, X=None, plot_dots=None, ax=None, color='k', ylabel=None, xlabel=N
     return fig, ax
 
 
-def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None):
+def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None, ax=None, draw_colorbar=None):
     """Simple interface to a heatmap (uses matplotlib's `imshow`).
 
     Parameters
@@ -261,28 +261,36 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None):
     zlabel : str (optional)
     """
 
-    fig, ax = plt.subplots()
+    draw_colorbar = True if draw_colorbar is None else draw_colorbar
+
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = None
 
     if isinstance(gridbounds, tuple):
         if isinstance(gridbounds[0], tuple):
             extent = [*gridbounds[0], *gridbounds[1], ]
         else:
-            extent = [-gridbounds[0], gridbounds[0], -
-                      gridbounds[1], gridbounds[1], ]
+            extent = [gridbounds[0], gridbounds[1], 
+                      gridbounds[0], gridbounds[1], ]
     else:
         extent = [-gridbounds, gridbounds, -gridbounds, gridbounds, ]
 
-    plt.imshow(X, cmap="hot", extent=extent, vmin=np.nanmin(
-        X), vmax=np.nanmax(X), norm=SymLogNorm(1, linscale=1))
+    img = ax.imshow(X, cmap="hot", extent=extent, vmin=np.nanmin(X), vmax=np.nanmax(X))
 
-    clb = plt.colorbar()
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.grid(False)
 
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.grid(False)
-    clb.set_label(zlabel)
+    if draw_colorbar:
+        clb = plt.colorbar(img, ax=ax)
+        clb.set_label(zlabel)
 
-    plt.tight_layout()
+    if fig is not None:
+        fig.tight_layout()
+
+    return fig, ax, img
 
 
 def figurator(nrows=2, ncols=2, nfigs=1, tight_layout=True, format_date=True, **args):
