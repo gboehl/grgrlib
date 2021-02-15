@@ -28,9 +28,4 @@ def consumption_equivalent(x, ce_dict):
 
     theta = uncompress(x, ce_dict)
 
-    VT = (VSS + theta)**(1 - util_par)
-
-    Vaux = VSS**(1 - util_par)/VT
-    Vaux[Vaux < 1e-2] = 1e-2
-
-    return Vaux**(1/(1 - util_par)) - 1
+    return (1 + theta/100)**(1/(1 - util_par)) - 1
