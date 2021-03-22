@@ -211,7 +211,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
     return figs, ax, handles
 
 
-def bifplot(y, X=None, plot_dots=None, ax=None, color='k', ylabel=None, xlabel=None):
+def bifplot(y, X=None, plot_dots=None, ax=None, markersize=0.02, color='k', ylabel=None, xlabel=None):
     """A bifurcation diagram
 
     (add further documentation)
@@ -233,7 +233,7 @@ def bifplot(y, X=None, plot_dots=None, ax=None, color='k', ylabel=None, xlabel=N
             plot_dots = True
 
     if not plot_dots:
-        ax.plot(y, X, '.', color=color, markersize=0.01)
+        ax.plot(y, X, '.', color=color, markersize=markersize)
     else:
         ax.plot(y, X, 'o', color=color)
 
@@ -247,7 +247,7 @@ def bifplot(y, X=None, plot_dots=None, ax=None, color='k', ylabel=None, xlabel=N
     return fig, ax
 
 
-def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None, ax=None, draw_colorbar=None):
+def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None, ax=None, draw_colorbar=None, cmap=None):
     """Simple interface to a heatmap (uses matplotlib's `imshow`).
 
     Parameters
@@ -262,6 +262,7 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None, ax=None, draw_c
     """
 
     draw_colorbar = True if draw_colorbar is None else draw_colorbar
+    cmap = "hot" if cmap is None else cmap
 
     if ax is None:
         fig, ax = plt.subplots()
@@ -277,7 +278,7 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None, ax=None, draw_c
     else:
         extent = [-gridbounds, gridbounds, -gridbounds, gridbounds, ]
 
-    img = ax.imshow(X, cmap="hot", extent=extent, vmin=np.nanmin(X), vmax=np.nanmax(X))
+    img = ax.imshow(X, cmap=cmap, extent=extent, vmin=np.nanmin(X), vmax=np.nanmax(X))
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
