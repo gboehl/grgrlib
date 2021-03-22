@@ -267,13 +267,14 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None):
         if isinstance(gridbounds[0], tuple):
             extent = [*gridbounds[0], *gridbounds[1], ]
         else:
-            extent = [-gridbounds[0], gridbounds[0], -
-                      gridbounds[1], gridbounds[1], ]
+            extent = [gridbounds[0], gridbounds[1],
+                      gridbounds[0], gridbounds[1], ]
     else:
         extent = [-gridbounds, gridbounds, -gridbounds, gridbounds, ]
 
-    plt.imshow(X, cmap="hot", extent=extent, vmin=np.nanmin(
-        X), vmax=np.nanmax(X), norm=SymLogNorm(1, linscale=1))
+    # plt.imshow(X, cmap="hot", extent=extent, vmin=np.nanmin(X), vmax=np.nanmax(X), norm=SymLogNorm(1, linscale=1))
+    plt.imshow(X, cmap="hot", extent=extent,
+               vmin=np.nanmin(X), vmax=np.nanmax(X))
 
     clb = plt.colorbar()
 
@@ -335,7 +336,8 @@ def save_png2pdf(fig, path, **args):
     """
 
     if not path:
-        print('[save_png2pdf:]'.ljust(15, ' ') + " No path provided, I'll pass...")
+        print('[save_png2pdf:]'.ljust(15, ' ') +
+              " No path provided, I'll pass...")
         return
 
     import os
