@@ -186,7 +186,7 @@ def klein(A, B=None, nstates=None, verbose=False, force=False):
 
     if verbose:
         print('[RE solver:]'.ljust(
-            15, ' ')+' Done in %s. Determinant of `Z11` is %1.2e. There are %s EVs o.u.c. ' % (np.round((time.time() - st), 5), nl.det(Z11), sum(out)) + mess0)
+            15, ' ')+' Done in %s. Determinant of `Z11` is %1.2e. There are %s EVs o.u.c. (of %s). ' % (np.round((time.time() - st), 5), nl.det(Z11), sum(out), len(out)) + mess0)
 
     return omg, lam
 
