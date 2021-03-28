@@ -344,7 +344,8 @@ def save_png2pdf(fig, path, **args):
     """
 
     if not path:
-        print('[save_png2pdf:]'.ljust(15, ' ') + " No path provided, I'll pass...")
+        print('[save_png2pdf:]'.ljust(15, ' ') +
+              " No path provided, I'll pass...")
         return
 
     import os
