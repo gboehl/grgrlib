@@ -378,4 +378,15 @@ def spy(M, ax=None, cmap='inferno'):
     return ax
 
 
+def wunstify(figs, axs):
+
+    for ax in axs:
+        ax.axis('off')
+
+    for fig in figs:
+        fig.tight_layout()
+
+    return 
+
+
 pplot = grplot
