@@ -377,9 +377,9 @@ def shredder(M, pivoting=None, tol=1e-11, verbose=False):
         raise NotImplementedError
 
 
-def nearest_psd(A):
+def nearest_psd(A, eps=0):
 
     B = (A + A.T)/2
     H = sl.polar(B)[1]
 
-    return (B + H)/2
+    return (B + H)/2 + eps
