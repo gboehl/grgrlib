@@ -273,12 +273,13 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None, ax=None, draw_c
         if isinstance(gridbounds[0], tuple):
             extent = [*gridbounds[0], *gridbounds[1], ]
         else:
-            extent = [gridbounds[0], gridbounds[1], 
+            extent = [gridbounds[0], gridbounds[1],
                       gridbounds[0], gridbounds[1], ]
     else:
         extent = [-gridbounds, gridbounds, -gridbounds, gridbounds, ]
 
-    img = ax.imshow(X, cmap=cmap, extent=extent, vmin=np.nanmin(X), vmax=np.nanmax(X))
+    img = ax.imshow(X, cmap=cmap, extent=extent,
+                    vmin=np.nanmin(X), vmax=np.nanmax(X))
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
