@@ -6,3 +6,4 @@ from .plots import *
 from .njitted import *
 from .optimize import *
 from .la import *
+from .jtools import *
