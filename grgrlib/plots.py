@@ -13,7 +13,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
 
     if not isinstance(X, tuple):
         # make it a tuple
-        X = X,
+        X = np.array(X),
 
     # use first object in X to get some infos
     X0 = np.array(X[0])
