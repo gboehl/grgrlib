@@ -91,8 +91,9 @@ def klein(A, B=None, nstates=None, verbose=False, force=False):
     Z11 = Z[:nstates, :nstates]
     Z21 = Z[nstates:, :nstates]
 
-    omg = Z21 @ sl.inv(Z11)
-    lam = Z11 @ sl.inv(S11) @ T11 @ sl.inv(Z11)
+    # changed from sl to nl because of stability:
+    omg = Z21 @ nl.inv(Z11)
+    lam = Z11 @ nl.inv(S11) @ T11 @ nl.inv(Z11)
 
     if verbose:
         print('[RE solver:]'.ljust(
