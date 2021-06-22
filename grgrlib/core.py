@@ -56,9 +56,9 @@ def klein(A, B=None, nstates=None, verbose=False, force=False):
     SS, TT, alp, bet, Q, Z = sl.ordqz(A, B, sort='ouc')
 
     if np.any(np.isclose(alp, bet)):
-        mess0 = 'Warning: unit root detected! '
+        mess = ' Warning: unit root detected!'
     else:
-        mess0 = ''
+        mess = ''
 
     # check for precision
     if not fast0(Q @ SS @ Z.T - A, 2):
@@ -75,15 +75,12 @@ def klein(A, B=None, nstates=None, verbose=False, force=False):
         nstates = sum(out)
     else:
         if not nstates == sum(out):
-            mess1 = 'B-K condition not satisfied: %s states but %s Evs inside the unit circle. ' % (
-                nstates, sum(out))
-        else:
-            mess1 = ''
+            mess = 'B-K condition not satisfied: %s states but %s Evs inside the unit circle.' % (nstates, sum(out)) + mess
 
-        if mess1 and not force:
-            raise ValueError(mess1+mess0)
-        elif mess1 and verbose:
-            print(mess1+mess0)
+            if not force:
+                raise ValueError(mess)
+            elif verbose:
+                print(mess)
 
     S11 = SS[:nstates, :nstates]
     T11 = TT[:nstates, :nstates]
@@ -97,58 +94,58 @@ def klein(A, B=None, nstates=None, verbose=False, force=False):
 
     if verbose:
         print('[RE solver:]'.ljust(
-            15, ' ')+' Done in %s. Determinant of `Z11` is %1.2e. There are %s EVs o.u.c. (of %s). ' % (np.round((time.time() - st), 5), nl.det(Z11), sum(out), len(out)) + mess0)
+            15, ' ')+' Done in %s. Determinant of `Z11` is %1.2e. There are %s EVs o.u.c. (of %s).' % (np.round((time.time() - st), 5), nl.det(Z11), sum(out), len(out)) + mess)
 
     return omg, lam
 
 
-def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
-    """
-    Klein's method
-    """
-    # TODO: rename this
-    print('[RE solver:]'.ljust(15, ' ') +
-          ' `re_bk` is depreciated. Use `klein` instead.')
+# def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
+    # """
+    # Klein's method
+    # """
+    # # TODO: rename this
+    # print('[RE solver:]'.ljust(15, ' ') +
+          # ' `re_bk` is depreciated. Use `klein` instead.')
 
-    if B is None:
-        B = np.eye(A.shape[0])
+    # if B is None:
+        # B = np.eye(A.shape[0])
 
-    MM, PP, alp, bet, Q, Z = sl.ordqz(A, B, sort='iuc')
+    # MM, PP, alp, bet, Q, Z = sl.ordqz(A, B, sort='iuc')
 
-    if not fast0(Q @ MM @ Z.T - A, 2):
-        raise ValueError('Numerical errors in QZ')
+    # if not fast0(Q @ MM @ Z.T - A, 2):
+        # raise ValueError('Numerical errors in QZ')
 
-    if verbose > 1:
-        print('[RE solver:]'.ljust(15, ' ') +
-              ' Pairs of `alp` and `bet`:\n', np.vstack((alp, bet)).T)
+    # if verbose > 1:
+        # print('[RE solver:]'.ljust(15, ' ') +
+              # ' Pairs of `alp` and `bet`:\n', np.vstack((alp, bet)).T)
 
-    out = ouc(alp, bet)
+    # out = ouc(alp, bet)
 
-    if not d_endo:
-        d_endo = sum(out)
-    else:
-        if sum(out) > d_endo:
-            mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (
-                sum(out), d_endo)
-        elif sum(out) < d_endo:
-            mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (
-                sum(out), d_endo)
-        else:
-            mess = ''
+    # if not d_endo:
+        # d_endo = sum(out)
+    # else:
+        # if sum(out) > d_endo:
+            # mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (
+                # sum(out), d_endo)
+        # elif sum(out) < d_endo:
+            # mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (
+                # sum(out), d_endo)
+        # else:
+            # mess = ''
 
-        if mess and not force:
-            raise ValueError(mess)
-        elif mess and verbose:
-            print(mess)
+        # if mess and not force:
+            # raise ValueError(mess)
+        # elif mess and verbose:
+            # print(mess)
 
-    Z21 = Z.T[-d_endo:, :d_endo]
-    Z22 = Z.T[-d_endo:, d_endo:]
+    # Z21 = Z.T[-d_endo:, :d_endo]
+    # Z22 = Z.T[-d_endo:, d_endo:]
 
-    if verbose:
-        print('[RE solver:]'.ljust(
-            15, ' ')+' Determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' % (nl.det(Z21), sum(out)))
+    # if verbose:
+        # print('[RE solver:]'.ljust(
+            # 15, ' ')+' Determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' % (nl.det(Z21), sum(out)))
 
-    return -nl.inv(Z21) @ Z22
+    # return -nl.inv(Z21) @ Z22
 
 
 def lti(AA, BB, CC, dimp, dimq, tol=1e-6, check=False, verbose=False):
