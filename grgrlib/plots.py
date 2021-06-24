@@ -52,7 +52,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
     if X0.ndim == 1:
         selector = False
     else:
-        selector = np.zeros(X[0].shape[-1], dtype=bool)
+        selector = np.zeros(np.shape(X[0])[-1], dtype=bool)
 
     X_list = []
     for x_raw in X:
