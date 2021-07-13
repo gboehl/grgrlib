@@ -68,10 +68,12 @@ def histogram_weights(a, bins, weights):
     sw = weights[sorting_index]
     cw = np.hstack((np.zeros(1), sw.cumsum()))
 
-    bin_index = np.hstack((
-        np.searchsorted(sa, bins[:-1], 'left'),
-        np.searchsorted(sa, bins[-1:], 'right')
-    ))
+    bin_index = np.hstack(
+        (
+            np.searchsorted(sa, bins[:-1], "left"),
+            np.searchsorted(sa, bins[-1:], "right"),
+        )
+    )
 
     cum_n = cw[bin_index]
 

@@ -20,11 +20,11 @@ def iuc(x, y):
     """
 
     out = np.empty_like(x, dtype=bool)
-    nonzero = (y != 0)
+    nonzero = y != 0
 
     # handles (x, y) = (0, 0) too
     out[~nonzero] = False
-    out[nonzero] = (abs(x[nonzero]/y[nonzero]) < 1.0)
+    out[nonzero] = abs(x[nonzero] / y[nonzero]) < 1.0
 
     return out
 
@@ -36,10 +36,10 @@ def ouc(x, y):
 
     # stolen from scipy and inverted
     out = np.empty_like(x, dtype=bool)
-    nonzero = (y != 0)
+    nonzero = y != 0
     # handles (x, y) = (0, 0) too
     out[~nonzero] = True
-    out[nonzero] = abs(x[nonzero]/y[nonzero]) > 1.0
+    out[nonzero] = abs(x[nonzero] / y[nonzero]) > 1.0
 
     return out
 
@@ -53,20 +53,26 @@ def klein(A, B=None, nstates=None, verbose=False, force=False):
     if B is None:
         B = np.eye(A.shape[0])
 
-    SS, TT, alp, bet, Q, Z = sl.ordqz(A, B, sort='ouc')
+    SS, TT, alp, bet, Q, Z = sl.ordqz(A, B, sort="ouc")
 
     if np.any(np.isclose(alp, bet)):
-        mess0 = 'Warning: unit root detected! '
+        mess0 = "Warning: unit root detected! "
     else:
-        mess0 = ''
+        mess0 = ""
 
     # check for precision
     if not fast0(Q @ SS @ Z.T - A, 2):
-        raise ValueError('Numerical errors in QZ')
+        raise ValueError("Numerical errors in QZ")
 
     if verbose > 1:
-        print('[RE solver:]'.ljust(15, ' ') +
-              ' Generalized EVs: ', np.sort(np.abs(alp/bet)))
+        out = np.empty_like(alp)
+        nonzero = bet != 0
+        out[~nonzero] = np.inf * np.abs(alp[~nonzero])
+        out[nonzero] = alp[nonzero] / bet[nonzero]
+
+        print(
+            "[RE solver:]".ljust(15, " ") + " Generalized EVs:\n", np.sort(np.abs(out))
+        )
 
     # check for Blanchard-Kahn
     out = ouc(alp, bet)
@@ -75,15 +81,17 @@ def klein(A, B=None, nstates=None, verbose=False, force=False):
         nstates = sum(out)
     else:
         if not nstates == sum(out):
-            mess1 = 'B-K condition not satisfied: %s states but %s Evs inside the unit circle. ' % (
-                nstates, sum(out))
+            mess1 = (
+                "B-K condition not satisfied: %s states but %s Evs inside the unit circle. "
+                % (nstates, sum(out))
+            )
         else:
-            mess1 = ''
+            mess1 = ""
 
         if mess1 and not force:
-            raise ValueError(mess1+mess0)
+            raise ValueError(mess1 + mess0)
         elif mess1 and verbose:
-            print(mess1+mess0)
+            print(mess1 + mess0)
 
     S11 = SS[:nstates, :nstates]
     T11 = TT[:nstates, :nstates]
@@ -96,8 +104,12 @@ def klein(A, B=None, nstates=None, verbose=False, force=False):
     lam = Z11 @ nl.inv(S11) @ T11 @ nl.inv(Z11)
 
     if verbose:
-        print('[RE solver:]'.ljust(
-            15, ' ')+' Done in %s. Determinant of `Z11` is %1.2e. There are %s EVs o.u.c. (of %s). ' % (np.round((time.time() - st), 5), nl.det(Z11), sum(out), len(out)) + mess0)
+        print(
+            "[RE solver:]".ljust(15, " ")
+            + " Done in %s. Determinant of `Z11` is %1.2e. There are %s EVs o.u.c. (of %s). "
+            % (np.round((time.time() - st), 5), nl.det(Z11), sum(out), len(out))
+            + mess0
+        )
 
     return omg, lam
 
@@ -107,20 +119,23 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
     Klein's method
     """
     # TODO: rename this
-    print('[RE solver:]'.ljust(15, ' ') +
-          ' `re_bk` is depreciated. Use `klein` instead.')
+    print(
+        "[RE solver:]".ljust(15, " ") + " `re_bk` is depreciated. Use `klein` instead."
+    )
 
     if B is None:
         B = np.eye(A.shape[0])
 
-    MM, PP, alp, bet, Q, Z = sl.ordqz(A, B, sort='iuc')
+    MM, PP, alp, bet, Q, Z = sl.ordqz(A, B, sort="iuc")
 
     if not fast0(Q @ MM @ Z.T - A, 2):
-        raise ValueError('Numerical errors in QZ')
+        raise ValueError("Numerical errors in QZ")
 
     if verbose > 1:
-        print('[RE solver:]'.ljust(15, ' ') +
-              ' Pairs of `alp` and `bet`:\n', np.vstack((alp, bet)).T)
+        print(
+            "[RE solver:]".ljust(15, " ") + " Pairs of `alp` and `bet`:\n",
+            np.vstack((alp, bet)).T,
+        )
 
     out = ouc(alp, bet)
 
@@ -128,13 +143,17 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
         d_endo = sum(out)
     else:
         if sum(out) > d_endo:
-            mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (
-                sum(out), d_endo)
+            mess = (
+                "B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables."
+                % (sum(out), d_endo)
+            )
         elif sum(out) < d_endo:
-            mess = 'B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables.' % (
-                sum(out), d_endo)
+            mess = (
+                "B-K condition not satisfied: %s EVs outside the unit circle for %s forward looking variables."
+                % (sum(out), d_endo)
+            )
         else:
-            mess = ''
+            mess = ""
 
         if mess and not force:
             raise ValueError(mess)
@@ -145,20 +164,22 @@ def re_bk(A, B=None, d_endo=None, verbose=False, force=False):
     Z22 = Z.T[-d_endo:, d_endo:]
 
     if verbose:
-        print('[RE solver:]'.ljust(
-            15, ' ')+' Determinant of `Z21` is %1.2e. There are %s EVs o.u.c.' % (nl.det(Z21), sum(out)))
+        print(
+            "[RE solver:]".ljust(15, " ")
+            + " Determinant of `Z21` is %1.2e. There are %s EVs o.u.c."
+            % (nl.det(Z21), sum(out))
+        )
 
     return -nl.inv(Z21) @ Z22
 
 
 def lti(AA, BB, CC, dimp, dimq, tol=1e-6, check=False, verbose=False):
-    """standard linear time iteration
-    """
+    """standard linear time iteration"""
 
     if check:
         pass
 
-    g = np.eye(dimq+dimp)
+    g = np.eye(dimq + dimp)
 
     norm = tol + 1
 
@@ -166,7 +187,7 @@ def lti(AA, BB, CC, dimp, dimq, tol=1e-6, check=False, verbose=False):
     while norm > tol:
         gn = g
         g = -nl.solve(BB + AA @ g, CC)
-        norm = np.max(np.abs(gn-g))
+        norm = np.max(np.abs(gn - g))
         icnt += 1
 
     if verbose:
@@ -179,8 +200,7 @@ def lti(AA, BB, CC, dimp, dimq, tol=1e-6, check=False, verbose=False):
 
 
 def speed_kills(A, B, dimp, dimq, selector=None, tol=1e-6, check=False, verbose=False):
-    """Improved linear time iteration
-    """
+    """Improved linear time iteration"""
 
     q, A = nl.qr(A)
     B = q.T @ B
@@ -212,9 +232,9 @@ def speed_kills(A, B, dimp, dimq, selector=None, tol=1e-6, check=False, verbose=
         gn = g
         g = A3 @ g @ nl.solve(A1 + A2 @ g, B1) - B2
         if selector is not None:
-            norm = np.max(np.abs(gn-g)[selector])
+            norm = np.max(np.abs(gn - g)[selector])
         else:
-            norm = np.max(np.abs(gn-g))
+            norm = np.max(np.abs(gn - g))
         icnt += 1
 
     if verbose:
@@ -296,42 +316,49 @@ def napper(cond, interval=0.1):
     while not cond():
 
         elt = round(time.time() - start_time, 3)
-        print("Zzzz... "+str(elt)+"s", end='\r', flush=True)
+        print("Zzzz... " + str(elt) + "s", end="\r", flush=True)
         time.sleep(interval)
 
-    print("Zzzz... "+str(elt)+"s.")
+    print("Zzzz... " + str(elt) + "s.")
 
 
 def timeprint(s, round_to=5, full=False):
 
     if s < 60:
         if full:
-            return str(np.round(s, round_to)) + ' seconds'
-        return str(np.round(s, round_to)) + 's'
+            return str(np.round(s, round_to)) + " seconds"
+        return str(np.round(s, round_to)) + "s"
 
     m, s = divmod(s, 60)
 
     if m < 60:
         if full:
-            return '%s minutes, %s seconds' % (int(m), int(s))
-        return '%sm%ss' % (int(m), int(s))
+            return "%s minutes, %s seconds" % (int(m), int(s))
+        return "%sm%ss" % (int(m), int(s))
 
     h, m = divmod(m, 60)
 
     if full:
-        return '%s hours, %s minutes, %s seconds' % (int(h), int(m), int(s))
-    return '%sh%sm%ss' % (int(h), int(m), int(s))
+        return "%s hours, %s minutes, %s seconds" % (int(h), int(m), int(s))
+    return "%sh%sm%ss" % (int(h), int(m), int(s))
 
 
 def shuffle(a, axis=-1):
-    """Shuffle along single axis
-    """
+    """Shuffle along single axis"""
 
     shape = a.shape
     res = a.reshape(-1, a.shape[axis])
     np.random.shuffle(res)
 
     return res.reshape(shape)
+
+
+def print_dict(d):
+
+    for k in d.keys():
+        print(str(k) + ":", d[k])
+
+    return 0
 
 
 def serializer(func):
@@ -341,18 +368,17 @@ def serializer(func):
     """
 
     fname = func.__name__
-    exec('dark_%s = func' % fname, locals(), globals())
+    exec("dark_%s = func" % fname, locals(), globals())
 
     def vodoo(*args, **kwargs):
-        return eval('dark_%s(*args, **kwargs)' % fname)
+        return eval("dark_%s(*args, **kwargs)" % fname)
 
     return vodoo
 
 
 def sabs(x, eps=1e-10):
-    """absolute value but smooth around 0
-    """
-    return np.sqrt(x**2 + eps)
+    """absolute value but smooth around 0"""
+    return np.sqrt(x ** 2 + eps)
 
 
 # aliases

@@ -22,13 +22,13 @@ def truncate_rank(s, threshold, avoid_pathological):
     if threshold == 1.0:
         r = len(s)
     elif threshold < 1.0:
-        r = np.sum(np.cumsum(s)/np.sum(s) < threshold)
+        r = np.sum(np.cumsum(s) / np.sum(s) < threshold)
         r += 1  # Hence the strict inequality above
         if avoid_pathological:
             # If not avoid_pathological, then the last 4 diag. entries of
             # reconst( *tsvd(eye(400),0.99) )
             # will be zero. This is probably not intended.
-            r += np.sum(np.isclose(s[r-1], s[r:]))
+            r += np.sum(np.isclose(s[r - 1], s[r:]))
     else:
         raise ValueError
     return r
@@ -83,7 +83,7 @@ def tinv(A, *kargs, **kwargs):
     Also see sl.pinv2().
     """
     U, s, VT = tsvd(A, *kargs, **kwargs)
-    return (VT.T * s**(-1.0)) @ U.T
+    return (VT.T * s ** (-1.0)) @ U.T
 
 
 def invertible_subm(A):
@@ -91,10 +91,10 @@ def invertible_subm(A):
     For an (m times n) matrix A with n > m this function finds the m columns that are necessary to construct a nonsingular submatrix of A.
     """
 
-    q, r, p = sl.qr(A, mode='economic', pivoting=True)
+    q, r, p = sl.qr(A, mode="economic", pivoting=True)
 
     res = np.zeros(A.shape[1], dtype=bool)
-    res[p[:A.shape[0]]] = True
+    res[p[: A.shape[0]]] = True
 
     return res
 
@@ -102,8 +102,8 @@ def invertible_subm(A):
 def givens_rotation(a, b):
     """Compute matrix entries for Givens rotation."""
     r = np.hypot(a, b)
-    c = a/r
-    s = -b/r
+    c = a / r
+    s = -b / r
 
     return (c, s)
 
@@ -111,16 +111,16 @@ def givens_rotation(a, b):
 @njit(cache=True, nogil=True, fastmath=True)
 def householder_reflection(x):
     alpha = x[0]
-    s = np.linalg.norm(x[1:])**2
+    s = np.linalg.norm(x[1:]) ** 2
     v = x.copy()
 
     if s == 0:
-        tau = 0.
+        tau = 0.0
     else:
-        t = np.sqrt(alpha**2 + s)
+        t = np.sqrt(alpha ** 2 + s)
         v[0] = alpha - t if alpha <= 0 else -s / (alpha + t)
 
-        tau = 2 * v[0]**2 / (s + v[0]**2)
+        tau = 2 * v[0] ** 2 / (s + v[0] ** 2)
         v /= v[0]
 
     return v, tau
@@ -129,16 +129,16 @@ def householder_reflection(x):
 @njit(cache=True, nogil=True, fastmath=True)
 def householder_reflection_right(x):
     alpha = x[-1]
-    s = np.linalg.norm(x[:-1])**2
+    s = np.linalg.norm(x[:-1]) ** 2
     v = x.copy()
 
     if s == 0:
-        tau = 0.
+        tau = 0.0
     else:
-        t = np.sqrt(alpha**2 + s)
+        t = np.sqrt(alpha ** 2 + s)
         v[-1] = alpha - t if alpha <= 0 else -s / (alpha + t)
 
-        tau = 2 * v[-1]**2 / (s + v[-1]**2)
+        tau = 2 * v[-1] ** 2 / (s + v[-1] ** 2)
         v /= v[-1]
 
     return v, tau
@@ -173,8 +173,7 @@ def qr_gr(A):
 
 
 def qr_hh(A):
-    """Perform QR decomposition of matrix A using Householder reflections.
-    """
+    """Perform QR decomposition of matrix A using Householder reflections."""
 
     M = A.copy()
     m, n = M.shape
@@ -186,7 +185,7 @@ def qr_hh(A):
 
         v, tau = householder_reflection(a)
 
-        H = np.identity(m-i)
+        H = np.identity(m - i)
         H -= tau * np.outer(v, v)
 
         M[i:] = H @ M[i:]
@@ -196,8 +195,7 @@ def qr_hh(A):
 
 
 def rq_hh(A):
-    """Perform RQ decomposition of matrix A using Householder reflections.
-    """
+    """Perform RQ decomposition of matrix A using Householder reflections."""
 
     M = A.copy()
     m, n = M.shape
@@ -205,22 +203,21 @@ def rq_hh(A):
 
     for i in range(min(m, n)):
 
-        a = M[-1-i, :n-i]
+        a = M[-1 - i, : n - i]
 
         v, tau = householder_reflection_right(a)
 
-        H = np.identity(n-i)
+        H = np.identity(n - i)
         H -= tau * np.outer(v, v)
 
-        M[:, :n-i] = M[:, :n-i] @ H
-        Q[:n-i, :] = H @ Q[:n-i, :]
+        M[:, : n - i] = M[:, : n - i] @ H
+        Q[: n - i, :] = H @ Q[: n - i, :]
 
     return M, Q
 
 
 def ql(M):
-    """Perform QL decomposition of matrix A using scipy
-    """
+    """Perform QL decomposition of matrix A using scipy"""
     r, q = sl.rq(M.T)
     return q.T, r.T
 
@@ -248,7 +245,7 @@ def shredder_basic(M, tol, verbose):
                 # apply Householder transformation
                 v, tau = householder_reflection(a)
 
-                H = np.identity(m-i)
+                H = np.identity(m - i)
                 H -= tau * np.outer(v, v)
 
                 Q[:, i:] = np.ascontiguousarray(Q[:, i:]) @ H
@@ -296,7 +293,7 @@ def shredder_pivoting(M, tol, verbose):
                 a = M[i:, j]
                 v, tau = householder_reflection(a)
 
-                H = np.identity(m-i)
+                H = np.identity(m - i)
                 H -= tau * np.outer(v, v)
                 M[i:] = H @ M[i:]
                 Q[:, i:] = np.ascontiguousarray(Q[:, i:]) @ H
@@ -335,7 +332,7 @@ def shredder_non_pivoting(M, tol, verbose):
                     P[np.array([j, k])] = P[np.array([k, j])]
 
                 if verbose:
-                    print('...switching rows', j, 'and', k)
+                    print("...switching rows", j, "and", k)
                 j += 1
 
         while j < n:
@@ -345,7 +342,7 @@ def shredder_non_pivoting(M, tol, verbose):
                 a = M[i:, j]
                 v, tau = householder_reflection(a)
 
-                H = np.identity(m-i)
+                H = np.identity(m - i)
                 H -= tau * np.outer(v, v)
                 M[i:] = H @ M[i:]
                 Q[:, i:] = np.ascontiguousarray(Q[:, i:]) @ H
@@ -361,7 +358,7 @@ def shredder_non_pivoting(M, tol, verbose):
 
 
 def shredder(M, pivoting=None, tol=1e-11, verbose=False):
-    """The QS decomposition from "Efficient Solution of Models with Occasionally Binding Constraints" (Gregor Boehl) 
+    """The QS decomposition from "Efficient Solution of Models with Occasionally Binding Constraints" (Gregor Boehl)
 
     The QS decomposition uses Householder reflections to bring a system in the row-echolon form. This is a dispatcher for the sub-functions.
     """
@@ -379,7 +376,7 @@ def shredder(M, pivoting=None, tol=1e-11, verbose=False):
 
 def nearest_psd(A, eps=0):
 
-    B = (A + A.T)/2
+    B = (A + A.T) / 2
     H = sl.polar(B)[1]
 
-    return (B + H)/2 + eps
+    return (B + H) / 2 + eps

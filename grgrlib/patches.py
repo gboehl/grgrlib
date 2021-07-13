@@ -4,7 +4,9 @@
 import numpy as np
 
 
-def kombine_run_mcmc(self, N, p0=None, lnpost0=None, lnprop0=None, blob0=None, **kwargs):
+def kombine_run_mcmc(
+    self, N, p0=None, lnpost0=None, lnprop0=None, blob0=None, **kwargs
+):
 
     from kombine.sampler import _GetLnProbWrapper
 
@@ -62,7 +64,8 @@ def kombine_run_mcmc(self, N, p0=None, lnpost0=None, lnprop0=None, blob0=None, *
                     lnprop0 = self.lnprop[-1]
             except IndexError:
                 raise ValueError(
-                    "Cannot have p0=None if the sampler hasn't been called.")
+                    "Cannot have p0=None if the sampler hasn't been called."
+                )
         else:
             p0 = self._last_run_mcmc_result[0]
             if lnpost0 is None:
@@ -72,26 +75,35 @@ def kombine_run_mcmc(self, N, p0=None, lnpost0=None, lnprop0=None, blob0=None, *
 
     if self._kde is not None:
         if self._last_run_mcmc_result is None and (lnpost0 is None or lnprop0 is None):
-            results = list(m(_GetLnProbWrapper(self._get_lnpost,
-                                               self._kde, *self._lnpost_args), p0))
+            results = list(
+                m(
+                    _GetLnProbWrapper(self._get_lnpost, self._kde, *self._lnpost_args),
+                    p0,
+                )
+            )
 
             if lnpost0 is None:
                 lnpost0 = np.array([r[0] for r in results])
             if lnprop0 is None:
                 lnprop0 = np.array([r[1] for r in results])
 
-    pbar = kwargs.pop('pbar', None)
+    pbar = kwargs.pop("pbar", None)
 
     if pbar is not None:
-        pbar.write('[kombine:]'.ljust(15, ' ') + 'Updating KDE... (mean acceptance_fraction: ' + str(np.mean(
-            self.acceptance_fraction).round(3)) + ', mean ACT: ' + str(np.mean(self.autocorrelation_times).round(3)) + ')')
+        pbar.write(
+            "[kombine:]".ljust(15, " ")
+            + "Updating KDE... (mean acceptance_fraction: "
+            + str(np.mean(self.acceptance_fraction).round(3))
+            + ", mean ACT: "
+            + str(np.mean(self.autocorrelation_times).round(3))
+            + ")"
+        )
 
     for results in self.sample(p0, lnpost0, lnprop0, blob0, N, **kwargs):
 
         if pbar is not None:
             pbar.update()
-            pbar.set_description(
-                'mean ll: '+str(np.mean(self._lnpost).round(5)))
+            pbar.set_description("mean ll: " + str(np.mean(self._lnpost).round(5)))
 
     # Store the results for later continuation and toss out the blob
     self._last_run_mcmc_result = results[:3]

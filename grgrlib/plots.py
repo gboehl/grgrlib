@@ -9,11 +9,29 @@ from matplotlib.colors import LogNorm, SymLogNorm
 from .core import fast0
 
 
-def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, legend=None, bulk_plot=False, ax=None, fig=None, figsize=None, nlocbins=None, sigma=0.05, alpha=None, stat=np.nanmedian, **plotargs):
+def grplot(
+    X,
+    yscale=None,
+    labels=None,
+    title="",
+    styles=None,
+    colors=None,
+    legend=None,
+    bulk_plot=False,
+    ax=None,
+    fig=None,
+    figsize=None,
+    nlocbins=None,
+    sigma=0.05,
+    alpha=None,
+    tol=1e-8,
+    stat=np.nanmedian,
+    **plotargs
+):
 
     if not isinstance(X, tuple):
         # make it a tuple
-        X = np.array(X),
+        X = (np.array(X),)
 
     # use first object in X to get some infos
     X0 = np.array(X[0])
@@ -26,8 +44,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         else:
             yscale = np.arange(len(X0))
     elif isinstance(yscale, tuple):
-        yscale = np.arange(yscale[0], yscale[0] +
-                           X0.shape[-2]*yscale[1], yscale[1])
+        yscale = np.arange(yscale[0], yscale[0] + X0.shape[-2] * yscale[1], yscale[1])
 
     if labels is None:
         if isinstance(X[0], pd.DataFrame):
@@ -40,13 +57,13 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         labels = np.ascontiguousarray(labels)
 
     if styles is None:
-        styles = '-'
+        styles = "-"
 
     if not isinstance(styles, tuple):
         styles = np.repeat(styles, len(X))
 
     if nlocbins is None:
-        nlocbins = 'auto'
+        nlocbins = "auto"
 
     # yet we can not be sure about the number of dimensions
     if X0.ndim == 1:
@@ -82,23 +99,24 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         if x.shape[0] > 3:
             if not bulk_plot:
                 interval = np.nanpercentile(
-                    x, [sigma*100/2, (1 - sigma/2)*100], axis=0)
+                    x, [sigma * 100 / 2, (1 - sigma / 2) * 100], axis=0
+                )
                 line = stat(x, axis=0)
             else:
                 bulk = x
 
         # check if there are states that are always zero
         if line is not None:
-            selector += ~fast0(line, 0)
+            selector += np.nanstd(line, 0) > tol
         if interval is not None:
-            selector += ~fast0(interval[0], 0)
-            selector += ~fast0(interval[1], 0)
+            selector += np.nanstd(interval[0], 0) > tol
+            selector += np.nanstd(interval[1], 0) > tol
         if bulk is not None:
             selector[:] = 1
 
         X_list.append((line, interval, bulk))
 
-    colors = colors or [None]*len(X_list)
+    colors = colors or [None] * len(X_list)
     if isinstance(colors, str):
         colors = (colors,)
     no_states = sum(selector)
@@ -115,11 +133,11 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         no_cols = 2
         for i in range(plt_no):
 
-            no_rows -= 4*(i+1) - no_states > 1
-            no_cols -= 4*(i+1) - no_states > 2
+            no_rows -= 4 * (i + 1) - no_states > 1
+            no_cols -= 4 * (i + 1) - no_states > 2
 
             if figsize is None:
-                figsize_loc = (no_cols*4, no_rows*3)
+                figsize_loc = (no_cols * 4, no_rows * 3)
             else:
                 figsize_loc = figsize
 
@@ -127,17 +145,17 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
             ax_flat = np.array(ax_of4).flatten()
 
             # assume we also want two cols per plot
-            for j in range(no_rows*no_cols):
+            for j in range(no_rows * no_cols):
 
-                if 4*i+j >= no_states:
+                if 4 * i + j >= no_states:
                     ax_flat[j].set_visible(False)
                 ax.append(ax_flat[j])
 
             if title:
                 if plt_no > 1:
-                    plt.suptitle('%s %s' % (title, i+1))
+                    plt.suptitle("%s %s" % (title, i + 1))
                 else:
-                    plt.suptitle('%s' % (title))
+                    plt.suptitle("%s" % (title))
             figs.append(fig)
     else:
         try:
@@ -164,10 +182,16 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
         for i in range(no_states):
 
             if line is not None:
-                lalpha = alpha if (
-                    interval is None and len(X_list) == 1) else 1
-                lline = ax[i].plot(yscale, line[:, selector][:, i], styles[obj_no],
-                                   color=colors[obj_no], label=legend_tag, alpha=lalpha, **plotargs)
+                lalpha = alpha if (interval is None and len(X_list) == 1) else 1
+                lline = ax[i].plot(
+                    yscale,
+                    line[:, selector][:, i],
+                    styles[obj_no],
+                    color=colors[obj_no],
+                    label=legend_tag,
+                    alpha=lalpha,
+                    **plotargs
+                )
                 subhandles.append(lline)
 
             if interval is not None:
@@ -176,19 +200,32 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
                 color = lline[-1].get_color() if line is not None else colors[obj_no]
 
                 if color:
-                    ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i],
-                                       lw=0, color=color, alpha=alpha or 0.3, label=label, **plotargs)
+                    ax[i].fill_between(
+                        yscale,
+                        *interval[:, :, selector][:, :, i],
+                        lw=0,
+                        color=color,
+                        alpha=alpha or 0.3,
+                        label=label,
+                        **plotargs
+                    )
                 else:
-                    ax[i].fill_between(yscale, *interval[:, :, selector][:, :, i],
-                                       lw=0, alpha=alpha or 0.3, label=label, **plotargs)
+                    ax[i].fill_between(
+                        yscale,
+                        *interval[:, :, selector][:, :, i],
+                        lw=0,
+                        alpha=alpha or 0.3,
+                        label=label,
+                        **plotargs
+                    )
 
             elif bulk is not None:
-                color = colors[obj_no] or 'maroon'
+                color = colors[obj_no] or "maroon"
 
-                ax[i].plot(yscale, bulk[..., i].swapaxes(
-                    0, 1), c=color, alpha=alpha or 0.05)
-            ax[i].tick_params(axis='both', which='both',
-                              top=False, right=False)
+                ax[i].plot(
+                    yscale, bulk[..., i].swapaxes(0, 1), c=color, alpha=alpha or 0.05
+                )
+            ax[i].tick_params(axis="both", which="both", top=False, right=False)
             if not isinstance(yscale, pd.DatetimeIndex):
                 ax[i].xaxis.set_major_locator(locator)
 
@@ -203,7 +240,7 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
     # the notebook `inline` backend does not like `tight_layout`. But better don't use it...
     # shell = get_ipython().__class__.__name__
     # if not shell == 'ZMQInteractiveShell' and figs is not None:
-        # [fig.tight_layout() for fig in figs]
+    # [fig.tight_layout() for fig in figs]
 
     if figs is not None:
         [fig.tight_layout() for fig in figs]
@@ -211,7 +248,16 @@ def grplot(X, yscale=None, labels=None, title='', styles=None, colors=None, lege
     return figs, ax, handles
 
 
-def bifplot(y, X=None, plot_dots=None, ax=None, markersize=0.02, color='k', ylabel=None, xlabel=None):
+def bifplot(
+    y,
+    X=None,
+    plot_dots=None,
+    ax=None,
+    markersize=0.02,
+    color="k",
+    ylabel=None,
+    xlabel=None,
+):
     """A bifurcation diagram
 
     (add further documentation)
@@ -233,9 +279,9 @@ def bifplot(y, X=None, plot_dots=None, ax=None, markersize=0.02, color='k', ylab
             plot_dots = True
 
     if not plot_dots:
-        ax.plot(y, X, '.', color=color, markersize=markersize)
+        ax.plot(y, X, ".", color=color, markersize=markersize)
     else:
-        ax.plot(y, X, 'o', color=color)
+        ax.plot(y, X, "o", color=color)
 
     ax.set_xlim(np.min(y), np.max(y))
     ax.set_ylabel(ylabel)
@@ -247,13 +293,22 @@ def bifplot(y, X=None, plot_dots=None, ax=None, markersize=0.02, color='k', ylab
     return fig, ax
 
 
-def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None, ax=None, draw_colorbar=None, cmap=None):
+def grheat(
+    X,
+    gridbounds,
+    xlabel=None,
+    ylabel=None,
+    zlabel=None,
+    ax=None,
+    draw_colorbar=None,
+    cmap=None,
+):
     """Simple interface to a heatmap (uses matplotlib's `imshow`).
 
     Parameters
     ----------
     X : numpy.array
-        a matrix-like object 
+        a matrix-like object
     gridbounds : float or tuple
         the bounds of the grid. If a float, -/+ this value is taken as the bounds
     xlabel : str (optional)
@@ -271,15 +326,26 @@ def grheat(X, gridbounds, xlabel=None, ylabel=None, zlabel=None, ax=None, draw_c
 
     if isinstance(gridbounds, tuple):
         if isinstance(gridbounds[0], tuple):
-            extent = [*gridbounds[0], *gridbounds[1], ]
+            extent = [
+                *gridbounds[0],
+                *gridbounds[1],
+            ]
         else:
-            extent = [gridbounds[0], gridbounds[1],
-                      gridbounds[0], gridbounds[1], ]
+            extent = [
+                gridbounds[0],
+                gridbounds[1],
+                gridbounds[0],
+                gridbounds[1],
+            ]
     else:
-        extent = [-gridbounds, gridbounds, -gridbounds, gridbounds, ]
+        extent = [
+            -gridbounds,
+            gridbounds,
+            -gridbounds,
+            gridbounds,
+        ]
 
-    img = ax.imshow(X, cmap=cmap, extent=extent,
-                    vmin=np.nanmin(X), vmax=np.nanmax(X))
+    img = ax.imshow(X, cmap=cmap, extent=extent, vmin=np.nanmin(X), vmax=np.nanmax(X))
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -328,48 +394,44 @@ def figurator(nrows=2, ncols=2, nfigs=1, tight_layout=True, format_date=True, **
     return figs, axs
 
 
-def axformater(ax, mode='rotate'):
-    """Rotate ax as in `autofmt_xdate`
-    """
+def axformater(ax, mode="rotate"):
+    """Rotate ax as in `autofmt_xdate`"""
 
-    if mode == 'rotate':
-        return plt.setp(ax.get_xticklabels(), rotation=30, ha='right')
-    elif mode == 'off':
+    if mode == "rotate":
+        return plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+    elif mode == "off":
         return ax.set_axis_off()
     else:
-        raise NotImplementedError('No such modus: %s' % mode)
+        raise NotImplementedError("No such modus: %s" % mode)
 
 
 def save_png2pdf(fig, path, **args):
-    """Save as a .png and use unix `convert` to convert to PDF.
-    """
+    """Save as a .png and use unix `convert` to convert to PDF."""
 
     if not path:
-        print('[save_png2pdf:]'.ljust(15, ' ') +
-              " No path provided, I'll pass...")
+        print("[save_png2pdf:]".ljust(15, " ") + " No path provided, I'll pass...")
         return
 
     import os
 
-    fig.savefig(path + '.png', **args)
-    os.system('convert %s.png %s.pdf' % (path, path))
+    fig.savefig(path + ".png", **args)
+    os.system("convert %s.png %s.pdf" % (path, path))
 
     return
 
 
-def spy(M, ax=None, cmap='inferno'):
-    """Visualize a matrix nicely
-    """
+def spy(M, ax=None, cmap="inferno"):
+    """Visualize a matrix nicely"""
     M = np.array(M)
     s0, s1 = M.shape
     fig_exists = False
 
     if ax is None:
         fig_exists = True
-        frc = max(min(s0/s1, 2), .5)
-        fig, ax = plt.subplots(1, 1, figsize=(5+2/frc, frc*5+2))
+        frc = max(min(s0 / s1, 2), 0.5)
+        fig, ax = plt.subplots(1, 1, figsize=(5 + 2 / frc, frc * 5 + 2))
 
-    ax.imshow(np.log10(1e-15+np.abs(M)), cmap=cmap)
+    ax.imshow(np.log10(1e-15 + np.abs(M)), cmap=cmap)
 
     if fig_exists:
         fig.tight_layout()
@@ -381,12 +443,12 @@ def spy(M, ax=None, cmap='inferno'):
 def wunstify(figs, axs):
 
     for ax in axs:
-        ax.axis('off')
+        ax.axis("off")
 
     for fig in figs:
         fig.tight_layout()
 
-    return 
+    return
 
 
 pplot = grplot
