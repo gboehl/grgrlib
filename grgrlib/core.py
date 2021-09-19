@@ -350,21 +350,6 @@ def print_dict(d):
     return 0
 
 
-def serializer(func):
-    """Dirty hack that transforms the non-serializable function to a serializable one (when using dill)
-    ...
-    Don't try that at home!
-    """
-
-    fname = func.__name__
-    exec("dark_%s = func" % fname, locals(), globals())
-
-    def vodoo(*args, **kwargs):
-        return eval("dark_%s(*args, **kwargs)" % fname)
-
-    return vodoo
-
-
 def sabs(x, eps=1e-10):
     """absolute value but smooth around 0"""
     return np.sqrt(x ** 2 + eps)
