@@ -1,9 +1,6 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-from joblib import Parallel, delayed
-import multiprocessing
-
 
 def serializer(func):
     """Dirty hack that transforms the non-serializable function to a serializable one (when using dill)
@@ -21,8 +18,10 @@ def serializer(func):
 
 
 class JoblibPoolDummy(object):
-    """joblib Parallel workers pool pretending to behave like a multiprocessing pool
-    """
+    """joblib Parallel workers pool pretending to behave like a multiprocessing pool"""
+
+    from joblib import Parallel, delayed
+    import multiprocessing
 
     def __init__(self, func=None, njobs=None, **kwargs):
 
