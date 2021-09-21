@@ -20,10 +20,10 @@ def serializer(func):
 class JoblibPoolDummy(object):
     """joblib Parallel workers pool pretending to behave like a multiprocessing pool"""
 
-    from joblib import Parallel, delayed
-    import multiprocessing
-
     def __init__(self, func=None, njobs=None, **kwargs):
+
+        from joblib import Parallel, delayed
+        import multiprocessing
 
         if njobs is None:
             self.njobs = multiprocessing.cpu_count()
