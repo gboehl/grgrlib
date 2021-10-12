@@ -7,7 +7,7 @@ from math import erfc
 
 
 SQRT2 = np.sqrt(2.0)
-SQRT2exp = np.sqrt(2.0 * np.exp(1))
+SQRT2pi = np.sqrt(2.0 * np.pi)
 
 
 @njit(nogil=True, cache=True)
@@ -57,7 +57,7 @@ def normal_cdf(x, mu, sig):
 
 @njit(nogil=True, cache=True)
 def normal_pdf(x, mu, sig):
-    return 1 / (sig * SQRT2exp) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
+    return 1 / (sig * SQRT2pi) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
 
 
 @njit(nogil=True, cache=True)
