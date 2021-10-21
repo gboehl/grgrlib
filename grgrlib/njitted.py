@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from numba import njit
+from numba import njit, vectorize
 from math import erfc
 
 
@@ -50,7 +50,7 @@ def numba_rand_norm(loc=0, scale=1, size=1):
     return out
 
 
-@njit(nogil=True, cache=True)
+@vectorize(nopython=True, cache=True)
 def normal_cdf(x, mu, sig):
     return erfc((mu - x) / sig / SQRT2) / 2.0
 
