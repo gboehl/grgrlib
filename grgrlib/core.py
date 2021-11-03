@@ -188,9 +188,10 @@ def lti(AA, BB, CC, dimp, dimq, tol=1e-6, check=False, verbose=False):
     return omg, lam
 
 
-def speed_kills(A, B, dimp, dimq, selector=None, tol=1e-6, check=False, verbose=False):
+def speed_kills(A, B, dimp, selector=None, tol=1e-6, check=False, max_iter=1000, verbose=False):
     """Improved linear time iteration"""
 
+    dimq = A.shape[0] - dimp
     q, A = nl.qr(A)
     B = q.T @ B
 
@@ -226,11 +227,12 @@ def speed_kills(A, B, dimp, dimq, selector=None, tol=1e-6, check=False, verbose=
             norm = np.max(np.abs(gn - g))
         icnt += 1
 
+        if icnt == max_iter:
+            raise Exception("(speed_kills:) iteration did not converge")
+
     if verbose:
         print(icnt)
 
-    if icnt == max_iter:
-        raise Exception("iteration did not converge")
 
     return g, -nl.inv(A[:dimq, :dimq] + A2 @ g) @ B1
 
