@@ -5,4 +5,4 @@ tests/*
 !tests/test.py
 build
 dist
-pynare.egg-info
+*.egg-info
