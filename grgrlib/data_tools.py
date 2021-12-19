@@ -9,6 +9,11 @@ def sdw_parser(x):
     """Tries to encode the date format used by the ECB statistical data warehouse (SDW). To be used for the argument `date_parser` in pandas `read_csv`"""
 
     try:
+        return pd.to_datetime(x)
+    except:
+        pass
+
+    try:
         return pd.to_datetime(x+'0', format='%YW%W%w')
     except:
         pass
@@ -18,5 +23,4 @@ def sdw_parser(x):
     except:
         pass
 
-    raise ValueError('Could not find a format for %s.' %s)
-
+    raise ValueError('Could not find a format for %s.' %x)
