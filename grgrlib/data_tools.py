@@ -14,7 +14,7 @@ def sdw_parser(x):
         pass
 
     try:
-        return pd.to_datetime(x+'0', format='%YW%W%w')
+        return pd.to_datetime(x+'0', format='%GW%V%w')
     except:
         pass
 
