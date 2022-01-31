@@ -76,9 +76,7 @@ def grplot(
 
         x = np.array(x_raw)
 
-        # X.shape[0] is the number of time series
-        # X.shape[1] is the len of the x axis (e.g. time)
-        # X.shape[2] is the no of different objects (e.g. states)
+        # X.shape = (no of time series, len of x axis (e.g. time), no of different objects (e.g. states))
         if x.ndim == 1:
             # be sure that X has 3 dimensions
             x = x.reshape(1, len(x), 1)
@@ -450,5 +448,29 @@ def wunstify(figs, axs):
 
     return
 
+
+def grhist2d(x, y=None, bins=10, ax=None, alpha=None):
+
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+    
+    if y is None:
+        x, y = x
+
+    hist, xedges, yedges = np.histogram2d(x, y, bins=bins)
+
+    # Construct arrays for the anchor positions of the 16 bars.
+    xpos, ypos = np.meshgrid(xedges[:-1], yedges[:-1], indexing="ij")
+    xpos = xpos.ravel()
+    ypos = ypos.ravel()
+    zpos = 0
+
+    dx = dy = 0.5 * np.ones_like(zpos)
+    dz = hist.ravel()
+
+    ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort='average', alpha=alpha)
+
+    return ax, (xedges, yedges)
 
 pplot = grplot
