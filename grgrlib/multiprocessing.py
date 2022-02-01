@@ -1,8 +1,10 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
+import dill
+from sys import platform
 
 
-def serializer(func):
+def serializer_unix(func):
     """Dirty hack that transforms the non-serializable function to a serializable one (when using dill)
     ...
     Don't try that at home!
@@ -15,6 +17,22 @@ def serializer(func):
         return eval("dark_%s(*args, **kwargs)" % fname)
 
     return vodoo
+
+
+def serializer(*functions):
+    """Serialize functions to use multiprocessing"""
+
+    if platform == "darwin" or platform == "linux":
+        rtn = []
+        for func in functions:
+            rtn.append(serializer_unix(func))
+    else:
+        fstr = dill.dumps(functions, recurse=True)
+        rtn = dill.loads(fstr)
+    if len(functions) == 1:
+        return rtn[0]
+    else:
+        return rtn
 
 
 class JoblibPoolDummy(object):
