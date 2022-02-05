@@ -293,7 +293,7 @@ def bifplot(
 
 def grheat(
     X,
-    gridbounds,
+    bounds,
     xlabel=None,
     ylabel=None,
     zlabel=None,
@@ -307,7 +307,7 @@ def grheat(
     ----------
     X : numpy.array
         a matrix-like object
-    gridbounds : float or tuple
+    bounds : float or tuple
         the bounds of the grid. If a float, -/+ this value is taken as the bounds
     xlabel : str (optional)
     ylabel : str (optional)
@@ -322,26 +322,28 @@ def grheat(
     else:
         fig = None
 
-    if isinstance(gridbounds, tuple):
-        if isinstance(gridbounds[0], tuple):
+    if isinstance(bounds, tuple):
+        if isinstance(bounds[0], tuple):
             extent = [
-                *gridbounds[0],
-                *gridbounds[1],
+                *bounds[0],
+                *bounds[1],
             ]
         else:
             extent = [
-                gridbounds[0],
-                gridbounds[1],
-                gridbounds[0],
-                gridbounds[1],
+                bounds[0],
+                bounds[1],
+                bounds[0],
+                bounds[1],
             ]
-    else:
+    elif isinstance(bounds, (float, int)):
         extent = [
-            -gridbounds,
-            gridbounds,
-            -gridbounds,
-            gridbounds,
+            -bounds,
+            bounds,
+            -bounds,
+            bounds,
         ]
+    else:
+        extent = bounds
 
     img = ax.imshow(X, cmap=cmap, extent=extent, vmin=np.nanmin(X), vmax=np.nanmax(X))
 
