@@ -3,7 +3,6 @@
 
 import jax
 import scipy.sparse as ssp
-import scipy as sp
 
 
 def newton_jax(func, init, maxit=30, tol=1e-8, sparse=False, verbose=False):
@@ -36,7 +35,7 @@ def newton_jax(func, init, maxit=30, tol=1e-8, sparse=False, verbose=False):
 
     res = {}
     cnt = 0
-    xi = init.copy()
+    xi = jax.numpy.array(init)
 
     while True:
         cnt += 1
@@ -44,7 +43,7 @@ def newton_jax(func, init, maxit=30, tol=1e-8, sparse=False, verbose=False):
         if sparse:
             xi -= ssp.linalg.spsolve(ssp.csr_matrix(jac(xi)), func(xi))
         else:
-            xi -= sp.linalg.solve(jac(xi), func(xi))
+            xi -= jax.scipy.linalg.solve(jac(xi), func(xi))
         eps = jax.numpy.abs(xi - xold).max()
 
         if verbose:
