@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import jax
+import time
 import scipy.sparse as ssp
 
 
@@ -31,6 +32,8 @@ def newton_jax(func, init, maxit=30, tol=1e-8, sparse=False, verbose=False):
         A dictionary of results similar to the output from scipy.optimize.root
     """
 
+    st = time.time()
+
     jac = jax.jacfwd(func)
 
     res = {}
@@ -47,7 +50,8 @@ def newton_jax(func, init, maxit=30, tol=1e-8, sparse=False, verbose=False):
         eps = jax.numpy.abs(xi - xold).max()
 
         if verbose:
-            print(f'    Iteration {cnt:3d} | max error {eps:.2e}')
+            ltime = time.time() - st
+            print(f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed %ss' %str(ltime)[:6])
 
         if cnt == maxit:
             res['success'] = False
