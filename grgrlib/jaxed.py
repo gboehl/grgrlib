@@ -6,7 +6,7 @@ import time
 import scipy.sparse as ssp
 
 
-def newton_jax(func, init, maxit=30, tol=1e-8, sparse=False, verbose=False):
+def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, verbose=False):
     """Newton method for root finding using automatic differenciation with jax. The argument `func` must be jittable with jax.
 
     ...
@@ -17,12 +17,14 @@ def newton_jax(func, init, maxit=30, tol=1e-8, sparse=False, verbose=False):
         Function f for which f(x)=0 should be found. Must be jittable with jax
     init : array
         Initial values of x
+    jac : callable, optional
+        Funciton that returns the jacobian. If not provided, jax.jacfwd is used
     maxit : int, optional
         Maximum number of iterations
     tol : float, optional
         Random seed. Defaults to 0
     sparse : bool, optional
-        Whether to use a sparse solver
+        Whether to use a sparse solver. If `true`, and jac is supplied, this should return a sparse matrix
     verbose : bool, optional
         Whether to display messages
 
@@ -34,7 +36,16 @@ def newton_jax(func, init, maxit=30, tol=1e-8, sparse=False, verbose=False):
 
     st = time.time()
 
-    jac = jax.jacfwd(func)
+    if jac is None:
+        if sparse:
+            jac = lambda x: ssp.csr_array(jax.jacfwd(func)(x))
+        else:
+            jac = jax.jacfwd(func)
+
+    if sparse:
+        solver = ssp.linalg.spsolve
+    else:
+        solver = jax.scipy.linalg.solve
 
     res = {}
     cnt = 0
@@ -43,10 +54,7 @@ def newton_jax(func, init, maxit=30, tol=1e-8, sparse=False, verbose=False):
     while True:
         cnt += 1
         xold = xi.copy()
-        if sparse:
-            xi -= ssp.linalg.spsolve(ssp.csr_matrix(jac(xi)), func(xi))
-        else:
-            xi -= jax.scipy.linalg.solve(jac(xi), func(xi))
+        xi -= solver(jac(xi), func(xi))
         eps = jax.numpy.abs(xi - xold).max()
 
         if verbose:
