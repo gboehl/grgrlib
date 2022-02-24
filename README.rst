@@ -2,7 +2,7 @@
 grgrlib
 =======
 
-Library of unspeakably useful functions. This is not ready for public use yet.
+This is a library of unspeakably useful functions. It serves as a container for functions shared across other projects. 
 
 Installation with ``pip``
 -----------------------------
@@ -11,7 +11,7 @@ It's as simple as:
 
 .. code-block:: bash
 
-   pip install econsieve
+   pip install grgrlib
 
 
 Installation of bleeding-edge version using ``git``
