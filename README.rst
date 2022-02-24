@@ -17,7 +17,7 @@ It's as simple as:
 Installation of bleeding-edge version using ``git``
 ---------------------------------------------------
 
-The handy way is to first install ``git``. Linux users just use their respective repos. Look into `this repo <https://github.com/gboehl/pydsge/blob/master/README.rst>` for details.
+The handy way is to first install ``git``. Linux users just use their respective repos. Look into `this repo <https://github.com/gboehl/pydsge/blob/master/README.rst>`_ for details.
 
 .. code-block:: bash
 
