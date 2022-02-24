@@ -2,7 +2,7 @@
 grgrlib
 =======
 
-This is a library of unspeakably useful functions. It serves as a container for functions shared across other projects. 
+This is a library of unspeakably (hence the name) useful functions. It serves as a container for functions shared across other projects. 
 
 Installation with ``pip``
 -----------------------------
