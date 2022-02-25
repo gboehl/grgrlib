@@ -23,4 +23,4 @@ def sdw_parser(x):
     except:
         pass
 
-    raise ValueError('Could not find a format for %s.' %x)
+    raise ValueError('Could not find a format for %s.' % x)

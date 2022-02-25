@@ -380,3 +380,37 @@ def nearest_psd(A, eps=0):
     H = sl.polar(B)[1]
 
     return (B + H) / 2 + eps
+
+
+def nul(n):
+    return np.zeros((n, n))
+
+
+def iuc(x, y):
+    """
+    Checks if pair of generalized EVs x,y is inside the unit circle. Here for legacy reasons
+    """
+
+    out = np.empty_like(x, dtype=bool)
+    nonzero = y != 0
+
+    # handles (x, y) = (0, 0) too
+    out[~nonzero] = False
+    out[nonzero] = abs(x[nonzero] / y[nonzero]) < 1.0
+
+    return out
+
+
+def ouc(x, y):
+    """
+    Check if pair of generalized EVs x,y is outside the unit circle. Here for legacy reasons
+    """
+
+    # stolen from scipy and inverted
+    out = np.empty_like(x, dtype=bool)
+    nonzero = y != 0
+    # handles (x, y) = (0, 0) too
+    out[~nonzero] = True
+    out[nonzero] = abs(x[nonzero] / y[nonzero]) > 1.0
+
+    return out
