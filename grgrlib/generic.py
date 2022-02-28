@@ -1,11 +1,12 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import time
+import os
 import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import scipy.stats as ss
-import time
 
 
 def klein(A, B=None, nstates=None, verbose=False, force=False):
@@ -270,6 +271,32 @@ def print_dict(d):
 def sabs(x, eps=1e-10):
     """absolute value but smooth around 0"""
     return np.sqrt(x ** 2 + eps)
+
+
+def parse_yaml(mfile):
+    """parse from yaml file"""
+    import yaml
+
+    f = open(mfile)
+    mtxt = f.read()
+    f.close()
+
+    # get dict
+    return yaml.safe_load(mtxt)
+
+
+def load_as_module(path):
+
+    import importlib.machinery
+    import importlib.util
+
+    modname = os.path.splitext(os.path.basename(path))[0]
+    loader = importlib.machinery.SourceFileLoader(modname, path)
+    spec = importlib.util.spec_from_loader(modname, loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+
+    return module
 
 
 # aliases

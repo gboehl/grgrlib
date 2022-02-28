@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LogNorm, SymLogNorm
-from .core import fast0
 
 
 def grplot(
@@ -44,7 +43,8 @@ def grplot(
         else:
             yscale = np.arange(len(X0))
     elif isinstance(yscale, tuple):
-        yscale = np.arange(yscale[0], yscale[0] + X0.shape[-2] * yscale[1], yscale[1])
+        yscale = np.arange(yscale[0], yscale[0] +
+                           X0.shape[-2] * yscale[1], yscale[1])
 
     if labels is None:
         if isinstance(X[0], pd.DataFrame):
@@ -180,7 +180,8 @@ def grplot(
         for i in range(no_states):
 
             if line is not None:
-                lalpha = alpha if (interval is None and len(X_list) == 1) else 1
+                lalpha = alpha if (
+                    interval is None and len(X_list) == 1) else 1
                 lline = ax[i].plot(
                     yscale,
                     line[:, selector][:, i],
@@ -223,7 +224,8 @@ def grplot(
                 ax[i].plot(
                     yscale, bulk[..., i].swapaxes(0, 1), c=color, alpha=alpha or 0.05
                 )
-            ax[i].tick_params(axis="both", which="both", top=False, right=False)
+            ax[i].tick_params(axis="both", which="both",
+                              top=False, right=False)
             if not isinstance(yscale, pd.DatetimeIndex):
                 ax[i].xaxis.set_major_locator(locator)
 
@@ -345,7 +347,8 @@ def grheat(
     else:
         extent = bounds
 
-    img = ax.imshow(X, cmap=cmap, extent=extent, vmin=np.nanmin(X), vmax=np.nanmax(X))
+    img = ax.imshow(X, cmap=cmap, extent=extent,
+                    vmin=np.nanmin(X), vmax=np.nanmax(X))
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -409,7 +412,8 @@ def save_png2pdf(fig, path, **args):
     """Save as a .png and use unix `convert` to convert to PDF."""
 
     if not path:
-        print("[save_png2pdf:]".ljust(15, " ") + " No path provided, I'll pass...")
+        print("[save_png2pdf:]".ljust(15, " ") +
+              " No path provided, I'll pass...")
         return
 
     import os
@@ -456,7 +460,7 @@ def grhist2d(x, y=None, bins=10, ax=None, alpha=None):
     if ax is None:
         fig = plt.figure()
         ax = fig.add_subplot(projection='3d')
-    
+
     if y is None:
         x, y = x
 
@@ -474,5 +478,6 @@ def grhist2d(x, y=None, bins=10, ax=None, alpha=None):
     ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort='average', alpha=alpha)
 
     return ax, (xedges, yedges)
+
 
 pplot = grplot
