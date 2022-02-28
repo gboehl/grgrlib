@@ -7,6 +7,7 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import scipy.stats as ss
+from .linalg import ouc
 
 
 def klein(A, B=None, nstates=None, verbose=False, force=False):
