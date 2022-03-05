@@ -3,6 +3,7 @@
 
 import time
 import os
+import sys
 import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
@@ -286,10 +287,14 @@ def parse_yaml(mfile):
     return yaml.safe_load(mtxt)
 
 
-def load_as_module(path):
+def load_as_module(path, add_to_path=True):
 
     import importlib.machinery
     import importlib.util
+
+    if add_to_path:
+        directory = os.path.dirname(path)
+        sys.path.append(directory)
 
     modname = os.path.splitext(os.path.basename(path))[0]
     loader = importlib.machinery.SourceFileLoader(modname, path)
