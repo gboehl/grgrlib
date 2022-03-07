@@ -81,8 +81,10 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, verbose=F
     return res
 
 
-def newton_jax_pure_raw(func, init, jac=None, maxit=30, tol=1e-8):
+def newton_jax_jittable(func, init, jac=None, maxit=30, tol=1e-8):
     """Newton method for root finding using automatic differenciation with jax BUT running in pure jitted jax. The argument `func` must be jittable with jax. Remember to check the error flags!
+
+    Note that when compiling this function without context, it is necessary to have the function as a static argument. This would imply that AD does not work on functions including a jitted version of this function, which renders jax rather useless. The major advantage of having this function is to include the jittable version (not the jitted one) directly into to-be-jitted code _together with the function for which the root is needed_.
 
     ...
 
@@ -132,4 +134,4 @@ def newton_jax_pure_raw(func, init, jac=None, maxit=30, tol=1e-8):
     return tain[0], func(tain[0]), tain[2], eps < tol
 
 
-newton_jax_pure = jax.jit(newton_jax_pure_raw, static_argnums=(0, 2, 3, 4))
+newton_jax_jit = jax.jit(newton_jax_jittable, static_argnums=(0, 2, 3, 4))
