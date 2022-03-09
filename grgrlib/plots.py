@@ -30,7 +30,7 @@ def grplot(
 
     if not isinstance(X, tuple):
         # make it a tuple
-        X = (np.array(X),)
+        X = (X,)
 
     # use first object in X to get some infos
     X0 = np.array(X[0])
