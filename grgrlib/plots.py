@@ -10,7 +10,7 @@ from matplotlib.colors import LogNorm, SymLogNorm
 
 def grplot(
     X,
-    yscale=None,
+    xscale=None,
     labels=None,
     title="",
     styles=None,
@@ -35,16 +35,16 @@ def grplot(
     # use first object in X to get some infos
     X0 = np.array(X[0])
 
-    if yscale is None:
+    if xscale is None:
         if isinstance(X[0], pd.DataFrame):
-            yscale = X[0].index
+            xscale = X[0].index
         elif X0.ndim > 1:
-            yscale = np.arange(X[0].shape[-2])
+            xscale = np.arange(X[0].shape[-2])
         else:
-            yscale = np.arange(len(X0))
-    elif isinstance(yscale, tuple):
-        yscale = np.arange(yscale[0], yscale[0] +
-                           X0.shape[-2] * yscale[1], yscale[1])
+            xscale = np.arange(len(X0))
+    elif isinstance(xscale, tuple):
+        xscale = np.arange(xscale[0], xscale[0] +
+                           X0.shape[-2] * xscale[1], xscale[1])
 
     if labels is None:
         if isinstance(X[0], pd.DataFrame):
@@ -163,7 +163,7 @@ def grplot(
         [axis.set_prop_cycle(None) for axis in ax]
         figs = fig or None
 
-    if not isinstance(yscale, pd.DatetimeIndex):
+    if not isinstance(xscale, pd.DatetimeIndex):
         locator = MaxNLocator(nbins=nlocbins, steps=[1, 2, 4, 8, 10])
 
     handles = []
@@ -183,7 +183,7 @@ def grplot(
                 lalpha = alpha if (
                     interval is None and len(X_list) == 1) else 1
                 lline = ax[i].plot(
-                    yscale,
+                    xscale,
                     line[:, selector][:, i],
                     styles[obj_no],
                     color=colors[obj_no],
@@ -200,7 +200,7 @@ def grplot(
 
                 if color:
                     ax[i].fill_between(
-                        yscale,
+                        xscale,
                         *interval[:, :, selector][:, :, i],
                         lw=0,
                         color=color,
@@ -210,7 +210,7 @@ def grplot(
                     )
                 else:
                     ax[i].fill_between(
-                        yscale,
+                        xscale,
                         *interval[:, :, selector][:, :, i],
                         lw=0,
                         alpha=alpha or 0.3,
@@ -222,11 +222,11 @@ def grplot(
                 color = colors[obj_no] or "maroon"
 
                 ax[i].plot(
-                    yscale, bulk[..., i].swapaxes(0, 1), c=color, alpha=alpha or 0.05
+                    xscale, bulk[..., i].swapaxes(0, 1), c=color, alpha=alpha or 0.05
                 )
             ax[i].tick_params(axis="both", which="both",
                               top=False, right=False)
-            if not isinstance(yscale, pd.DatetimeIndex):
+            if not isinstance(xscale, pd.DatetimeIndex):
                 ax[i].xaxis.set_major_locator(locator)
 
         handles.append(subhandles)
