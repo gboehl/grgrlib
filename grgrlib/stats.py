@@ -26,7 +26,7 @@ def psd_func(M):
 
 
 @njit(cache=True)
-def logpdf(x, mean, cov):
+def mvn_logpdf(x, mean, cov):
     """log-PDF of multivariate normal"""
 
     _LOG_2PI = np.log(2 * np.pi)
@@ -45,7 +45,7 @@ def percentile(x, q=0.01):
 
     xsort = np.sort(x)
     n = len(x)
-    return np.sum(xsort[-int(np.ceil(n * q)) :]) / np.sum(x)
+    return np.sum(xsort[-int(np.ceil(n * q)):]) / np.sum(x)
 
 
 def mode(x):
@@ -121,11 +121,14 @@ def fast_kde(x, bw=4.5):
     kernel = gaussian(kern_nx, scotts_factor * std_x)
 
     npad = min(nx, 2 * kern_nx)
-    grid = np.concatenate([grid[npad:0:-1], grid, grid[nx : nx - npad : -1]])
-    density = convolve(grid, kernel, mode="same")[npad : npad + nx]
+    grid = np.concatenate([grid[npad:0:-1], grid, grid[nx: nx - npad: -1]])
+    density = convolve(grid, kernel, mode="same")[npad: npad + nx]
 
     norm_factor = n * dx * (2 * np.pi * std_x ** 2 * scotts_factor ** 2) ** 0.5
 
     density = density / norm_factor
 
     return density, xmin, xmax
+
+
+logpdf = mvn_logpdf  # for legacy reasons
