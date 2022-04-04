@@ -125,7 +125,7 @@ def newton_jax_jittable(func, init, jac=None, maxit=30, tol=1e-8):
         (xi, _, cnt) = tain
         cnt += 1
         xold = xi
-        xi -= .1*jax.scipy.linalg.solve(jac(xi), func(xi))
+        xi -= jax.scipy.linalg.solve(jac(xi), func(xi))
         return (xi, xold, cnt)
 
     tain = jax.lax.while_loop(cond_func, body_func, (xi, xi + 1, 0))
