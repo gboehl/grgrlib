@@ -289,18 +289,27 @@ def parse_yaml(mfile):
 
 def load_as_module(path, add_to_path=True):
 
-    import importlib.machinery
-    import importlib.util
-
     if add_to_path:
         directory = os.path.dirname(path)
         sys.path.append(directory)
 
+    # necessary for first option:
+    # import importlib.machinery
+    # import importlib.util
+
+    # modname = os.path.splitext(os.path.basename(path))[0]
+    # loader = importlib.machinery.SourceFileLoader(modname, path)
+    # spec = importlib.util.spec_from_loader(modname, loader)
+    # module = importlib.util.module_from_spec(spec)
+    # loader.exec_module(module)
+
+    # slighly different:
+    import importlib.util as iu
+
     modname = os.path.splitext(os.path.basename(path))[0]
-    loader = importlib.machinery.SourceFileLoader(modname, path)
-    spec = importlib.util.spec_from_loader(modname, loader)
-    module = importlib.util.module_from_spec(spec)
-    loader.exec_module(module)
+    spec = iu.spec_from_file_location(modname, path)
+    module = iu.module_from_spec(spec)
+    spec.loader.exec_module(module)
 
     return module
 
