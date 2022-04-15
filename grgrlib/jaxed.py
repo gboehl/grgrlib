@@ -61,7 +61,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, verbose=F
         if verbose:
             ltime = time.time() - st
             print(
-                f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed %ss' % str(ltime)[:6])
+                f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed {ltime:3.6f}')
 
         if cnt == maxit:
             res['success'] = False
@@ -74,7 +74,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, verbose=F
             break
 
         if jax.numpy.isnan(eps):
-            raise Exception('Newton method returned `NaN` in iter %s' % cnt)
+            raise Exception(
+                f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {np.linalg.det(jac(xold)):1.5g}.')
 
     res['x'], res['fun'], res['niter'] = xi, func(xi), cnt
 
