@@ -7,7 +7,7 @@ import time
 import scipy.sparse as ssp
 
 
-def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, verbose=False):
+def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, verbose=False):
     """Newton method for root finding using automatic differenciation with jax. The argument `func` must be jittable with jax.
 
     ...
@@ -25,7 +25,9 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, verbose=F
     tol : float, optional
         Random seed. Defaults to 0
     sparse : bool, optional
-        Whether to use a sparse solver. If `true`, and jac is supplied, this should return a sparse matrix
+        Whether to calculate a sparse jacobian. If `true`, and jac is supplied, this should return a sparse matrix
+    solver : callable, optional
+        Provide a custom solver
     verbose : bool, optional
         Whether to display messages
 
@@ -43,10 +45,11 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, verbose=F
         else:
             jac = jax.jacfwd(func)
 
-    if sparse:
-        solver = ssp.linalg.spsolve
-    else:
-        solver = jax.scipy.linalg.solve
+    if solver is None:
+        if sparse:
+            solver = ssp.linalg.spsolve
+        else:
+            solver = jax.scipy.linalg.solve
 
     res = {}
     cnt = 0
@@ -61,7 +64,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, verbose=F
         if verbose:
             ltime = time.time() - st
             print(
-                f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed {ltime:3.6f}')
+                f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed {ltime:3.4f}')
 
         if cnt == maxit:
             res['success'] = False
@@ -74,8 +77,9 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, verbose=F
             break
 
         if jax.numpy.isnan(eps):
+            jacval = jac(xold) if not sparse else jac(xold).toarray()
             raise Exception(
-                f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {np.linalg.det(jac(xold)):1.5g}.')
+                f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {np.linalg.det(jacval):1.5g}.')
 
     res['x'], res['fun'], res['niter'] = xi, func(xi), cnt
 
