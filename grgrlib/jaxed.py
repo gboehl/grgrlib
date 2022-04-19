@@ -2,12 +2,24 @@
 # -*- coding: utf-8 -*-
 
 import jax
-import jax.numpy as np
+import jax.numpy as jnp
 import time
 import scipy.sparse as ssp
+import functools
 
 
-def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, verbose=False):
+def value_and_jac(f, x):
+    """Return value and Jacobian of x.
+    """
+
+    pushfwd = functools.partial(jax.jvp, f, (x,))
+    basis = jnp.eye(x.size, dtype=x.dtype)
+    y, jac = jax.vmap(pushfwd, out_axes=(None, 1))((basis,))
+
+    return y, jac
+
+
+def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, func_returns_jac=False, verbose=False):
     """Newton method for root finding using automatic differenciation with jax. The argument `func` must be jittable with jax.
 
     ...
@@ -39,7 +51,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
 
     st = time.time()
 
-    if jac is None:
+    if jac is None and not func_returns_jac:
         if sparse:
             def jac(x): return ssp.csr_array(jax.jacfwd(func)(x))
         else:
@@ -58,7 +70,11 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
     while True:
         cnt += 1
         xold = xi.copy()
-        xi -= solver(jac(xi), func(xi))
+        if func_returns_jac:
+            f, j = func(xi)
+        else:
+            f, j = func(xi), jac(xi)
+        xi -= solver(j, f)
         eps = jax.numpy.abs(xi - xold).max()
 
         if verbose:
@@ -79,7 +95,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
         if jax.numpy.isnan(eps):
             jacval = jac(xold) if not sparse else jac(xold).toarray()
             raise Exception(
-                f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {np.linalg.det(jacval):1.5g}.')
+                f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {jnp.linalg.det(jacval):1.5g}.')
 
     res['x'], res['fun'], res['niter'] = xi, func(xi), cnt
 
@@ -114,11 +130,11 @@ def newton_jax_jittable(func, init, jac=None, maxit=30, tol=1e-8):
     if jac is None:
         jac = jax.jacfwd(func)
 
-    xi = np.array(init)
+    xi = jnp.array(init)
 
     def cond_func(tain):
         xi, xold, cnt = tain
-        eps = np.abs(xi - xold).max()
+        eps = jnp.abs(xi - xold).max()
 
         cond = cnt < maxit
         cond &= eps > tol
@@ -134,7 +150,7 @@ def newton_jax_jittable(func, init, jac=None, maxit=30, tol=1e-8):
         return (xi, xold, cnt)
 
     tain = jax.lax.while_loop(cond_func, body_func, (xi, xi + 1, 0))
-    eps = np.abs(tain[0] - tain[1]).max()
+    eps = jnp.abs(tain[0] - tain[1]).max()
 
     return tain[0], func(tain[0]), tain[2], eps < tol
 
