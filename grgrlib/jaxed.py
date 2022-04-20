@@ -71,10 +71,10 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
         cnt += 1
         xold = xi.copy()
         if func_returns_jac:
-            f, j = func(xi)
+            fval, jacval = func(xi)
         else:
-            f, j = func(xi), jac(xi)
-        xi -= solver(j, f)
+            fval, jacval = func(xi), jac(xi)
+        xi -= solver(jacval, fval)
         eps = jax.numpy.abs(xi - xold).max()
 
         if verbose:
@@ -93,7 +93,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             break
 
         if jax.numpy.isnan(eps):
-            jacval = jac(xold) if not sparse else jac(xold).toarray()
+            if sparse:
+                jacval = jacval.toarray()
             raise Exception(
                 f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {jnp.linalg.det(jacval):1.5g}.')
 
