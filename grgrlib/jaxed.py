@@ -2,10 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import jax
-import jax.numpy as jnp
 import time
-import scipy.sparse as ssp
 import functools
+import jax.numpy as jnp
+import scipy.sparse as ssp
+from .plots import spy
+from jax.experimental.host_callback import id_print as jax_print
 
 
 def value_and_jac(f, x):
@@ -19,7 +21,7 @@ def value_and_jac(f, x):
     return y, jac
 
 
-def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, func_returns_jac=False, verbose=False):
+def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, func_returns_jac=False, inspect_jac=False, verbose=False):
     """Newton method for root finding using automatic differenciation with jax. The argument `func` must be jittable with jax.
 
     ...
@@ -40,6 +42,10 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
         Whether to calculate a sparse jacobian. If `true`, and jac is supplied, this should return a sparse matrix
     solver : callable, optional
         Provide a custom solver
+    func_returns_jac : bool, optional
+        Set to `True` if the function also returns the jacobian.
+    inspect_jac : bool, optional
+        If `True`, use grgrlib.plots.spy to visualize the jacobian
     verbose : bool, optional
         Whether to display messages
 
@@ -65,17 +71,28 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
 
     res = {}
     cnt = 0
-    xi = jax.numpy.array(init)
+    xi = jnp.array(init)
 
     while True:
+
         cnt += 1
         xold = xi.copy()
+
         if func_returns_jac:
             fval, jacval = func(xi)
         else:
             fval, jacval = func(xi), jac(xi)
+
+        eps_fval = jnp.abs(fval).max()
+        if eps_fval < tol:
+            res['success'] = True
+            res['message'] = "The solution converged."
+            break
+
+        if inspect_jac:
+            spy(jacval)
         xi -= solver(jacval, fval)
-        eps = jax.numpy.abs(xi - xold).max()
+        eps = jnp.abs(xi - xold).max()
 
         if verbose:
             ltime = time.time() - st
@@ -92,7 +109,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             res['message'] = "The solution converged."
             break
 
-        if jax.numpy.isnan(eps):
+        if jnp.isnan(eps):
             if sparse:
                 jacval = jacval.toarray()
             raise Exception(
@@ -139,7 +156,7 @@ def newton_jax_jittable(func, init, jac=None, maxit=30, tol=1e-8):
 
         cond = cnt < maxit
         cond &= eps > tol
-        cond &= ~jax.numpy.isnan(eps)
+        cond &= ~jnp.isnan(eps)
 
         return cond
 
