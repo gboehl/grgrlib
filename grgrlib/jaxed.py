@@ -10,7 +10,7 @@ from .plots import spy
 from jax.experimental.host_callback import id_print as jax_print
 
 
-def value_and_jac(f, x):
+def value_and_jac_inner(f, x):
     """Return value and Jacobian of x.
     """
 
@@ -21,7 +21,13 @@ def value_and_jac(f, x):
     return y, jac
 
 
-def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, func_returns_jac=False, inspect_jac=False, verbose=False):
+def value_and_jac(f):
+    """Return function that returns value and Jacobian of x.
+    """
+    return lambda x: value_and_jac_inner(f, x)
+
+
+def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, func_returns_jac=False, inspect_jac=False, verbose=False, verbose_jac_det=False):
     """Newton method for root finding using automatic differenciation with jax. The argument `func` must be jittable with jax.
 
     ...
@@ -48,6 +54,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
         If `True`, use grgrlib.plots.spy to visualize the jacobian
     verbose : bool, optional
         Whether to display messages
+    verbose_jac_det : bool, optional
+        Whether to supply additional information on the determinant of the jacobian (computationally more costly).
 
     Returns
     -------
@@ -96,8 +104,12 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
 
         if verbose:
             ltime = time.time() - st
-            print(
-                f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed {ltime:3.4f}')
+            info_str = f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed {ltime:3.4f}'
+            if verbose_jac_det:
+                jacval = jacval.toarray() if sparse else jacval
+                info_str += f' | det {jnp.linalg.det(jacval):1.5g}'
+
+            print(info_str)
 
         if cnt == maxit:
             res['success'] = False
@@ -110,8 +122,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             break
 
         if jnp.isnan(eps):
-            if sparse:
-                jacval = jacval.toarray()
+            jacval = jacval.toarray() if sparse else jacval
             raise Exception(
                 f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {jnp.linalg.det(jacval):1.5g}.')
 
