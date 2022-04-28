@@ -36,7 +36,7 @@ def append(path_or_h5py, dataset_names, data):
     oldlenght = f[dataset_names[0]].shape[0]
     for i, name in enumerate(dataset_names):
         f[name].resize(oldlenght + 1, axis=0)
-        f[name][oldlenght:] = data[i]
+        f[name][oldlenght] = data[i]
 
     f.close()
 
