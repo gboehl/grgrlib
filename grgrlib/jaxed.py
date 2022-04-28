@@ -10,7 +10,7 @@ from .plots import spy
 from jax.experimental.host_callback import id_print as jax_print
 
 
-def value_and_jac_inner(f, x):
+def value_and_jac_inner(f, x, sparse):
     """Return value and Jacobian of x.
     """
 
@@ -18,13 +18,16 @@ def value_and_jac_inner(f, x):
     basis = jnp.eye(x.size, dtype=x.dtype)
     y, jac = jax.vmap(pushfwd, out_axes=(None, 1))((basis,))
 
+    if sparse:
+        return y, ssp.csr_array(jac)
+
     return y, jac
 
 
-def value_and_jac(f):
+def value_and_jac(f, sparse=False):
     """Return function that returns value and Jacobian of x.
     """
-    return lambda x: value_and_jac_inner(f, x)
+    return lambda x: value_and_jac_inner(f, x, sparse)
 
 
 def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, func_returns_jac=False, inspect_jac=False, verbose=False, verbose_jac_det=False):
@@ -126,7 +129,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             raise Exception(
                 f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {jnp.linalg.det(jacval):1.5g}.')
 
-    res['x'], res['fun'], res['niter'] = xi, func(xi), cnt
+    res['x'], res['niter'] = xi, cnt
+    res['fun'] = func(xi)[0] if func_returns_jac else func(xi)
 
     return res
 
