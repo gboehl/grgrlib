@@ -1,6 +1,7 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import os
 import h5py
 import numpy as np
 
@@ -9,7 +10,7 @@ def init(path, dataset_name, data, compression='gzip'):
     """Initialize a dataset. Assumes `data` to be a numpy array.
     """
 
-    f = h5py.File(path, 'w')
+    f = h5py.File(path, 'a')
     f.create_dataset(dataset_name, data=data[np.newaxis],
                      compression=compression, chunks=True, maxshape=(None, *data.shape))
     f.close()
@@ -17,14 +18,26 @@ def init(path, dataset_name, data, compression='gzip'):
     return
 
 
-def append(path, dataset_name, data):
-    """Append to a dataset. Only appends one new observation at a time!
+def append(path_or_h5py, dataset_names, data):
+    """Append to a dataset. Batch append takes care that the append to each dataset has the same index!
     """
 
-    f = h5py.File(path, 'a')
-    oldlenght = f[dataset_name].shape[0]
-    f[dataset_name].resize(oldlenght + 1, axis=0)
-    f[dataset_name][oldlenght:] = data
+    if isinstance(path_or_h5py, str):
+        f = h5py.File(path_or_h5py, 'a')
+    else:
+        f = path_or_h5py
+
+    if isinstance(dataset_names, str):
+        dataset_names = dataset_names,
+        data = data,
+
+    # batch append assumes that all datasets have the same lenght!
+    # if this is irrelevant, just call append independently for each dataset
+    oldlenght = f[dataset_names[0]].shape[0]
+    for i, name in enumerate(dataset_names):
+        f[name].resize(oldlenght + 1, axis=0)
+        f[name][oldlenght:] = data[i]
+
     f.close()
 
     return
@@ -39,3 +52,12 @@ def read(path, dataset_name):
     f.close()
 
     return res
+
+
+def rm(path):
+    """Remove backend.
+    """
+
+    os.remove(path)
+
+    return
