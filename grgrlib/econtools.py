@@ -5,6 +5,7 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.linalg as sl
 import time
+from .linalg import ouc, fast0
 
 
 def klein(A, B=None, nstates=None, verbose=False, force=False):

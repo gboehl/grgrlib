@@ -414,3 +414,31 @@ def ouc(x, y):
     out[nonzero] = abs(x[nonzero] / y[nonzero]) > 1.0
 
     return out
+
+
+def fast0(A, mode=-1, tol=1e-08):
+
+    con = abs(A) < tol
+    if mode == -1:
+        return con
+    elif mode == 0:
+        return con.all(axis=0)
+    elif mode == 1:
+        return con.all(axis=1)
+    else:
+        return con.all()
+
+
+def shuffle(a, axis=-1):
+    """Shuffle along single axis"""
+
+    shape = a.shape
+    res = a.reshape(-1, a.shape[axis])
+    np.random.shuffle(res)
+
+    return res.reshape(shape)
+
+
+def sabs(x, eps=1e-10):
+    """absolute value but smooth around 0"""
+    return np.sqrt(x ** 2 + eps)
