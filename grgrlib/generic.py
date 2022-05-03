@@ -9,6 +9,7 @@ import numpy.linalg as nl
 import scipy.linalg as sl
 import scipy.stats as ss
 from .linalg import ouc
+from scipy.special import logit, expit
 
 
 def map2arr(iterator, return_np_array=True, check_nones=True):
