@@ -130,8 +130,11 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
 
         if jnp.isnan(eps):
             jacval = jacval.toarray() if not isinstance(jacval, ndarray) else jacval
-            raise Exception(
-                f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {jnp.linalg.det(jacval):1.5g}.')
+            if jnp.isnan(jacval).any():
+                raise Exception(f'The jacobian contains `NaN`s.')
+            else:
+                raise Exception(
+                    f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {jnp.linalg.det(jacval):1.5g}.')
 
     res['x'], res['niter'] = xi, cnt
     res['fun'] = func(xi)[0] if func_returns_jac else func(xi)
