@@ -6,8 +6,10 @@ import time
 import functools
 import jax.numpy as jnp
 import scipy.sparse as ssp
+from scipy import ndarray
 from .plots import spy
 from jax.experimental.host_callback import id_print as jax_print
+# from jaxlib.xla_extension import DeviceArray
 
 
 def value_and_jac_inner(f, x, sparse):
@@ -67,6 +69,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
     """
 
     st = time.time()
+    verbose_jac_det |= inspect_jac
+    verbose |= verbose_jac_det
 
     if jac is None and not func_returns_jac:
         if sparse:
@@ -100,8 +104,6 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             res['message'] = "The solution converged."
             break
 
-        if inspect_jac:
-            spy(jacval)
         xi -= solver(jacval, fval)
         eps = jnp.abs(xi - xold).max()
 
@@ -111,6 +113,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             if verbose_jac_det:
                 jacval = jacval.toarray() if sparse else jacval
                 info_str += f' | det {jnp.linalg.det(jacval):1.5g}'
+                if inspect_jac:
+                    spy(jacval)
 
             print(info_str)
 
@@ -125,7 +129,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             break
 
         if jnp.isnan(eps):
-            jacval = jacval.toarray() if sparse else jacval
+            jacval = jacval.toarray() if not isinstance(jacval, ndarray) else jacval
             raise Exception(
                 f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {jnp.linalg.det(jacval):1.5g}.')
 
