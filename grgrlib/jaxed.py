@@ -112,7 +112,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             info_str = f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed {ltime:3.4f}'
             if verbose_jac_det:
                 jacval = jacval.toarray() if sparse else jacval
-                info_str += f' | det {jnp.linalg.det(jacval):1.5g}'
+                info_str += f' | det {jnp.linalg.det(jacval):1.5g} | rank {jnp.linalg.matrix_rank(jacval)}/{jacval.shape[0]}'
                 if inspect_jac:
                     spy(jacval)
 
@@ -129,7 +129,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             break
 
         if jnp.isnan(eps):
-            jacval = jacval.toarray() if not isinstance(jacval, ndarray) else jacval
+            jacval = jacval.toarray() if isinstance(
+                jacval, ssp._arrays.csr_array) else jacval
             if jnp.isnan(jacval).any():
                 raise Exception(f'The jacobian contains `NaN`s.')
             else:
