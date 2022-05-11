@@ -32,7 +32,7 @@ def value_and_jac(f, sparse=False):
     return lambda x: value_and_jac_inner(f, x, sparse)
 
 
-def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, func_returns_jac=False, inspect_jac=False, verbose=False, verbose_jac_det=False):
+def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, func_returns_jac=False, inspect_jac=False, verbose=False, verbose_jac=False):
     """Newton method for root finding using automatic differenciation with jax. The argument `func` must be jittable with jax.
 
     ...
@@ -59,7 +59,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
         If `True`, use grgrlib.plots.spy to visualize the jacobian
     verbose : bool, optional
         Whether to display messages
-    verbose_jac_det : bool, optional
+    verbose_jac : bool, optional
         Whether to supply additional information on the determinant of the jacobian (computationally more costly).
 
     Returns
@@ -69,8 +69,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
     """
 
     st = time.time()
-    verbose_jac_det |= inspect_jac
-    verbose |= verbose_jac_det
+    verbose_jac |= inspect_jac
+    verbose |= verbose_jac
 
     if jac is None and not func_returns_jac:
         if sparse:
@@ -110,7 +110,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
         if verbose:
             ltime = time.time() - st
             info_str = f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed {ltime:3.4f}'
-            if verbose_jac_det:
+            if verbose_jac:
                 jacval = jacval.toarray() if sparse else jacval
                 info_str += f' | det {jnp.linalg.det(jacval):1.5g} | rank {jnp.linalg.matrix_rank(jacval)}/{jacval.shape[0]}'
                 if inspect_jac:
