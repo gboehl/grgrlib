@@ -293,77 +293,6 @@ def bifplot(
     return fig, ax
 
 
-def grheat(
-    X,
-    bounds,
-    xlabel=None,
-    ylabel=None,
-    zlabel=None,
-    ax=None,
-    draw_colorbar=None,
-    cmap=None,
-):
-    """Simple interface to a heatmap (uses matplotlib's `imshow`).
-
-    Parameters
-    ----------
-    X : numpy.array
-        a matrix-like object
-    bounds : float or tuple
-        the bounds of the grid. If a float, -/+ this value is taken as the bounds
-    xlabel : str (optional)
-    ylabel : str (optional)
-    zlabel : str (optional)
-    """
-
-    draw_colorbar = True if draw_colorbar is None else draw_colorbar
-    cmap = "hot" if cmap is None else cmap
-
-    if ax is None:
-        fig, ax = plt.subplots()
-    else:
-        fig = None
-
-    if isinstance(bounds, tuple):
-        if isinstance(bounds[0], tuple):
-            extent = [
-                *bounds[0],
-                *bounds[1],
-            ]
-        else:
-            extent = [
-                bounds[0],
-                bounds[1],
-                bounds[0],
-                bounds[1],
-            ]
-    elif isinstance(bounds, (float, int)):
-        extent = [
-            -bounds,
-            bounds,
-            -bounds,
-            bounds,
-        ]
-    else:
-        extent = bounds
-
-    img = ax.imshow(X, cmap=cmap, extent=extent,
-                    vmin=np.nanmin(X), vmax=np.nanmax(X))
-
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.grid(False)
-
-    if draw_colorbar:
-        clb = plt.colorbar(img, ax=ax)
-        clb.set_label(zlabel)
-
-    if fig is not None:
-        fig.tight_layout()
-
-    return fig, ax, img
-
-
 def figurator(nrows=2, ncols=2, nfigs=1, tight_layout=True, format_date=True, **args):
     """Create list of figures and axes with (potentially) more than one graph
 
@@ -455,6 +384,77 @@ def wunstify(figs, axs):
     return
 
 
+def grheat(
+    X,
+    bounds,
+    xlabel=None,
+    ylabel=None,
+    zlabel=None,
+    ax=None,
+    draw_colorbar=None,
+    cmap=None,
+):
+    """Simple interface to a heatmap (uses matplotlib's `imshow`).
+
+    Parameters
+    ----------
+    X : numpy.array
+        a matrix-like object
+    bounds : float or tuple
+        the bounds of the grid. If a float, -/+ this value is taken as the bounds
+    xlabel : str (optional)
+    ylabel : str (optional)
+    zlabel : str (optional)
+    """
+
+    draw_colorbar = True if draw_colorbar is None else draw_colorbar
+    cmap = "hot" if cmap is None else cmap
+
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = None
+
+    if isinstance(bounds, tuple):
+        if isinstance(bounds[0], tuple):
+            extent = [
+                *bounds[0],
+                *bounds[1],
+            ]
+        else:
+            extent = [
+                bounds[0],
+                bounds[1],
+                bounds[0],
+                bounds[1],
+            ]
+    elif isinstance(bounds, (float, int)):
+        extent = [
+            -bounds,
+            bounds,
+            -bounds,
+            bounds,
+        ]
+    else:
+        extent = bounds
+
+    img = ax.imshow(X, cmap=cmap, extent=extent,
+                    vmin=np.nanmin(X), vmax=np.nanmax(X))
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.grid(False)
+
+    if draw_colorbar:
+        clb = plt.colorbar(img, ax=ax)
+        clb.set_label(zlabel)
+
+    if fig is not None:
+        fig.tight_layout()
+
+    return fig, ax, img
+
+
 def grhist2d(x, y=None, bins=10, ax=None, alpha=None):
 
     if ax is None:
@@ -476,6 +476,29 @@ def grhist2d(x, y=None, bins=10, ax=None, alpha=None):
     dz = hist.ravel()
 
     ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort='average', alpha=alpha)
+
+    return ax, (xedges, yedges)
+
+
+def grbar3d(x, bounds=None, xedges=None, yedges=None, width=1, depth=1, ax=None, **kwargs):
+
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+
+    xedges = np.linspace(*bounds[0], x.shape[0]) if xedges is None else xedges
+    yedges = np.linspace(*bounds[1], x.shape[1]) if yedges is None else yedges
+
+    # xpos, ypos = np.meshgrid(xedges, yedges)
+    xpos, ypos = np.meshgrid(xedges, yedges, indexing="ij")
+    xpos = xpos.ravel()
+    ypos = ypos.ravel()
+    zpos = np.zeros_like(x.ravel())
+
+    dx = dy = 0.5 * np.ones_like(zpos)
+    dz = x.ravel()
+
+    ax.bar3d(xpos, ypos, zpos, width, depth, dz, shade=True, **kwargs)
 
     return ax, (xedges, yedges)
 
