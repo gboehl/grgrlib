@@ -6,7 +6,7 @@ import time
 import functools
 import jax.numpy as jnp
 import scipy.sparse as ssp
-from scipy import ndarray, isnan
+from numpy import ndarray, isnan
 from .plots import spy
 from jax.experimental.host_callback import id_print as jax_print
 # from jaxlib.xla_extension import DeviceArray
