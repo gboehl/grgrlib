@@ -6,7 +6,7 @@ import time
 import functools
 import jax.numpy as jnp
 import scipy.sparse as ssp
-from scipy import ndarray
+from scipy import ndarray, isnan
 from .plots import spy
 from jax.experimental.host_callback import id_print as jax_print
 # from jaxlib.xla_extension import DeviceArray
@@ -98,6 +98,13 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
         else:
             fval, jacval = func(xi), jac(xi)
 
+        jac_is_nan = isnan(jacval.data) if isinstance(
+            jacval, ssp._arrays.csr_array) else jnp.isnan(jacval)
+        if jac_is_nan.any():
+            res['success'] = False
+            res['message'] = "The jacobian contains `NaN`s."
+            break
+
         eps_fval = jnp.abs(fval).max()
         if eps_fval < tol:
             res['success'] = True
@@ -129,16 +136,17 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             break
 
         if jnp.isnan(eps):
-            jacval = jacval.toarray() if isinstance(
-                jacval, ssp._arrays.csr_array) else jacval
-            if jnp.isnan(jacval).any():
-                raise Exception(f'The jacobian contains `NaN`s.')
-            else:
-                raise Exception(
-                    f'Newton method returned `NaN` in iter {cnt}. Determinant of jacobian is {jnp.linalg.det(jacval):1.5g}.')
+            res['success'] = False
+            res['message'] = f"Function returns 'NaN's"
+            break
+
+    jacval = jacval.toarray() if isinstance(
+        jacval, ssp._arrays.csr_array) else jacval
 
     res['x'], res['niter'] = xi, cnt
     res['fun'] = func(xi)[0] if func_returns_jac else func(xi)
+    res['jac'] = jacval
+    res['det'] = jnp.linalg.det(jacval)
 
     return res
 
