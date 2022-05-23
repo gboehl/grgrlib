@@ -480,10 +480,10 @@ def grhist2d(x, y=None, bins=10, ax=None, alpha=None):
     return ax, (xedges, yedges)
 
 
-def grbar3d(x, bounds=None, xedges=None, yedges=None, width=1, depth=1, ax=None, **kwargs):
+def grbar3d(x, bounds=None, xedges=None, yedges=None, width=1, depth=1, ax=None, figsize=None, **kwargs):
 
     if ax is None:
-        fig = plt.figure()
+        fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(projection='3d')
 
     xedges = np.linspace(*bounds[0], x.shape[0]) if xedges is None else xedges
