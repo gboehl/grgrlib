@@ -29,6 +29,7 @@ setup(
         'matplotlib',
         'numpy',
         'numba'
+        'pandas'
     ],
     include_package_data=True,
 )
