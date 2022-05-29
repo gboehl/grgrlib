@@ -1,9 +1,9 @@
 Documentation
 ==================
 
-``grgrlib.core``
-------------------
-.. automodule:: grgrlib.core
+``grgrlib.datatools``
+---------------------
+.. automodule:: grgrlib.datatools
    :members:
    :undoc-members:
    :show-inheritance:
@@ -26,13 +26,6 @@ Hand-written optimizers. Currently only CMA-ES. Look for the documentation of `c
    :undoc-members:
    :show-inheritance:
 
-``grgrlib.patches``
--------------------
-.. automodule:: grgrlib.patches
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 ``grgrlib.njitted``
 -------------------
 .. automodule:: grgrlib.njitted
@@ -40,23 +33,9 @@ Hand-written optimizers. Currently only CMA-ES. Look for the documentation of `c
    :undoc-members:
    :show-inheritance:
 
-``grgrlib.itersys``
--------------------
-.. automodule:: grgrlib.itersys
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-``grgrlib.models``
-------------------
-.. automodule:: grgrlib.models
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-``grgrlib.mp_tools``
---------------------
-.. automodule:: grgrlib.mp_tools
+``grgrlib.multiprocessing``
+---------------------------
+.. automodule:: grgrlib.multiprocessing
    :members:
    :undoc-members:
    :show-inheritance:

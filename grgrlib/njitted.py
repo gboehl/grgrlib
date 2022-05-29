@@ -3,11 +3,11 @@
 
 import numpy as np
 from numba import njit, vectorize
-from math import erfc
+from math import erfc, pi
 
 
 SQRT2 = np.sqrt(2.0)
-SQRT2pi = np.sqrt(2.0 * np.pi)
+SQRT2pi = np.sqrt(2.0 * pi)
 
 
 @njit(nogil=True, cache=True)
