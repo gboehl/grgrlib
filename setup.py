@@ -28,7 +28,7 @@ setup(
         'pathos',
         'matplotlib',
         'numpy',
-        'numba'
+        'numba',
         'pandas'
     ],
     include_package_data=True,
