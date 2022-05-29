@@ -102,7 +102,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             jacval, ssp._arrays.csr_array) else jnp.isnan(jacval)
         if jac_is_nan.any():
             res['success'] = False
-            res['message'] = "The jacobian contains `NaN`s."
+            res['message'] = "The Jacobian contains `NaN`s."
             break
 
         eps_fval = jnp.abs(fval).max()
