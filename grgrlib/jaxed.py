@@ -119,7 +119,9 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             info_str = f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed {ltime:3.4f}'
             if verbose_jac:
                 jacval = jacval.toarray() if sparse else jacval
-                info_str += f' | det {jnp.linalg.det(jacval):1.5g} | rank {jnp.linalg.matrix_rank(jacval)}/{jacval.shape[0]}'
+                jacdet = jnp.linalg.det(jacval) if (
+                    jacval.shape[0] == jacval.shape[1]) else 0
+                info_str += f' | det {jacdet:1.5g} | rank {jnp.linalg.matrix_rank(jacval)}/{jacval.shape[0]}'
                 if inspect_jac:
                     spy(jacval)
 
@@ -146,7 +148,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
     res['x'], res['niter'] = xi, cnt
     res['fun'] = func(xi)[0] if func_returns_jac else func(xi)
     res['jac'] = jacval
-    res['det'] = jnp.linalg.det(jacval)
+    res['det'] = jnp.linalg.det(jacval) if (
+        jacval.shape[0] == jacval.shape[1]) else 0
 
     return res
 
