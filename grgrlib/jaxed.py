@@ -90,8 +90,9 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
 
     while True:
 
-        cnt += 1
         xold = xi.copy()
+        jacold = jacval.copy() if cnt else None
+        cnt += 1
 
         if func_returns_jac:
             fval, jacval = func(xi)
@@ -103,6 +104,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
         if jac_is_nan.any():
             res['success'] = False
             res['message'] = "The Jacobian contains `NaN`s."
+            jacval = jacold
             break
 
         eps_fval = jnp.abs(fval).max()
