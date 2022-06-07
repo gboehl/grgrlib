@@ -151,7 +151,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
     res['fun'] = func(xi)[0] if func_returns_jac else func(xi)
     res['jac'] = jacval
     res['det'] = jnp.linalg.det(jacval) if (
-        jacval.shape[0] == jacval.shape[1]) else 0
+        jacval is not None and jacval.shape[0] == jacval.shape[1]) else 0
 
     return res
 
