@@ -131,7 +131,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
         if jac_is_nan.any():
             res['success'] = False
             res['message'] = "The Jacobian contains `NaN`s."
-            jacval = jacold
+            jacval = jacold if jacold is not None else jacval
             break
 
         eps_fval = jnp.abs(fval).max()
