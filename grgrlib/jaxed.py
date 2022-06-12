@@ -9,27 +9,54 @@ import scipy.sparse as ssp
 from numpy import ndarray, isnan
 from .plots import spy
 from jax.experimental.host_callback import id_print as jax_print
-# from jaxlib.xla_extension import DeviceArray
+from jax._src.api import (_check_callable, _check_input_dtype_jacfwd, _check_output_dtype_jacfwd, _ensure_index,
+                          _jvp, _std_basis, _jacfwd_unravel, lu, argnums_partial, tree_map, partial, Callable, Sequence, Union, vmap)
 
 
-def value_and_jac_inner(f, x, sparse):
-    """Return value and Jacobian of x.
+def jacfwd_and_val(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
+                   has_aux: bool = False, holomorphic: bool = False) -> Callable:
+    """Value and Jacobian of ``fun`` evaluated column-by-column using forward-mode AD. Apart from returning the function value, this is one-to-one adopted from
+  jax._src.api.
+
+    Args:
+      fun: Function whose Jacobian is to be computed.
+      argnums: Optional, integer or sequence of integers. Specifies which
+        positional argument(s) to differentiate with respect to (default ``0``).
+      has_aux: Optional, bool. Indicates whether ``fun`` returns a pair where the
+        first element is considered the output of the mathematical function to be
+        differentiated and the second element is auxiliary data. Default False.
+      holomorphic: Optional, bool. Indicates whether ``fun`` is promised to be
+        holomorphic. Default False.
+
+    Returns:
+      A function with the same arguments as ``fun``, that evaluates the value and Jacobian of
+      ``fun`` using forward-mode automatic differentiation. If ``has_aux`` is True
+      then a tuple of (value, jacobian, auxiliary_data) is returned.
     """
+    _check_callable(fun)
+    argnums = _ensure_index(argnums)
 
-    pushfwd = functools.partial(jax.jvp, f, (x,))
-    basis = jnp.eye(x.size, dtype=x.dtype)
-    y, jac = jax.vmap(pushfwd, out_axes=(None, 1))((basis,))
+    def jacfun(*args, **kwargs):
+        f = lu.wrap_init(fun, kwargs)
+        f_partial, dyn_args = argnums_partial(f, argnums, args,
+                                              require_static_args_hashable=False)
+        tree_map(partial(_check_input_dtype_jacfwd, holomorphic), dyn_args)
+        if not has_aux:
+            pushfwd = partial(_jvp, f_partial, dyn_args)
+            y, jac = vmap(pushfwd, out_axes=(None, -1))(_std_basis(dyn_args))
+        else:
+            pushfwd = partial(_jvp, f_partial, dyn_args, has_aux=True)
+            y, jac, aux = vmap(pushfwd, out_axes=(
+                None, -1, None))(_std_basis(dyn_args))
+        tree_map(partial(_check_output_dtype_jacfwd, holomorphic), y)
+        example_args = dyn_args[0] if isinstance(argnums, int) else dyn_args
+        jac_tree = tree_map(partial(_jacfwd_unravel, example_args), y, jac)
+        if not has_aux:
+            return y, jac_tree
+        else:
+            return y, jac_tree, aux
 
-    if sparse:
-        return y, ssp.csr_array(jac)
-
-    return y, jac
-
-
-def value_and_jac(f, sparse=False):
-    """Return function that returns value and Jacobian of x.
-    """
-    return lambda x: value_and_jac_inner(f, x, sparse)
+    return jacfun
 
 
 def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, func_returns_jac=False, inspect_jac=False, verbose=False, verbose_jac=False):
