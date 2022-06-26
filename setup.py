@@ -11,7 +11,7 @@ setup(
     long_description_content_type="text/x-rst",
     url="https://github.com/gboehl/grgrlib",
     name='grgrlib',
-    version='0.1.9',
+    version='0.1.10',
     author='Gregor Boehl',
     author_email='admin@gregorboehl.com',
     license='MIT',

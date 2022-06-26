@@ -13,6 +13,12 @@ from jax._src.api import (_check_callable, _check_input_dtype_jacfwd, _check_inp
                           _jvp, _vjp, _std_basis, _jacfwd_unravel, _jacrev_unravel, lu, argnums_partial, tree_map, tree_structure, tree_transpose, partial, Callable, Sequence, Union, vmap)
 
 
+def jvp_vmap(func, primals, tangents):
+    """vmap over jvp. Currently only for functions with two arguments."""
+    pushfwd = functools.partial(jax.jvp, func, primals)
+    return jax.vmap(pushfwd, in_axes=((1, 1),), out_axes=(None, 1))(tangents)
+
+
 def jacfwd_and_val(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
                    has_aux: bool = False, holomorphic: bool = False) -> Callable:
     """Value and Jacobian of ``fun`` evaluated column-by-column using forward-mode AD. Apart from returning the function value, this is one-to-one adopted from
