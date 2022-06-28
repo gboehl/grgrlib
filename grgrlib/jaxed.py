@@ -16,7 +16,7 @@ from jax._src.api import (_check_callable, _check_input_dtype_jacfwd, _check_inp
 def jvp_vmap(func, primals, tangents):
     """vmap over jvp. Currently only for functions with two arguments."""
     pushfwd = functools.partial(jax.jvp, func, primals)
-    return jax.vmap(pushfwd, in_axes=((1, 1),), out_axes=(None, 1))(tangents)
+    return jax.vmap(pushfwd, in_axes=([1, 1],), out_axes=(None, 1))(tangents)
 
 
 def jacfwd_and_val(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
@@ -178,6 +178,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
 
         if func_returns_jac:
             fval, jacval = func(xi)
+            if isinstance(jacval, ssp._arrays.lil_array):
+                jacval = jacval.tocsr()
         else:
             fval, jacval = func(xi), jac(xi)
 
@@ -227,7 +229,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             break
 
     jacval = jacval.toarray() if isinstance(
-        jacval, ssp._arrays.csr_array) else jacval
+        jacval, (ssp._arrays.csr_array, ssp._arrays.lil_array)) else jacval
 
     res['x'], res['niter'] = xi, cnt
     res['fun'] = func(xi)[0] if func_returns_jac else func(xi)
