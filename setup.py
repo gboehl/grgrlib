@@ -11,7 +11,7 @@ setup(
     long_description_content_type="text/x-rst",
     url="https://github.com/gboehl/grgrlib",
     name='grgrlib',
-    version='0.1.12',
+    version='0.1.13',
     author='Gregor Boehl',
     author_email='admin@gregorboehl.com',
     license='MIT',
@@ -26,7 +26,7 @@ setup(
         'numpy',
         'scipy',
         'matplotlib',
-        'pandas'
+        'pandas',
         'sympy',
     ],
     include_package_data=True,
