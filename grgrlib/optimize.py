@@ -3,7 +3,7 @@
 
 import time
 import numpy as np
-from grgrlib import map2arr
+from .generic import map2arr
 
 try:
     import chaospy

@@ -290,7 +290,7 @@ def newton_jax_jittable(func, init, jac=None, maxit=30, tol=1e-8):
     tain = jax.lax.while_loop(cond_func, body_func, (xi, xi + 1, 0))
     eps = jnp.abs(tain[0] - tain[1]).max()
 
-    return tain[0], func(tain[0]), tain[2], eps < tol
+    return tain[0], func(tain[0]), tain[2] < maxit, eps < tol
 
 
 newton_jax_jit = jax.jit(newton_jax_jittable, static_argnums=(0, 2, 3, 4))
