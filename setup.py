@@ -25,14 +25,13 @@ setup(
     extras_require={
      'njitted': ['numba'],
      'jaxed': ['jax', 'jaxlib'],
-     'full': ['numba', 'jax', 'jaxlib'],
+     'opti': ['chaospy'],
+     'data': ['pandas'],
     },
     install_requires=[
         'numpy',
         'scipy',
         'matplotlib',
-        'pandas',
-        'sympy',
     ],
     include_package_data=True,
 )

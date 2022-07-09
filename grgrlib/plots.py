@@ -3,9 +3,13 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LogNorm, SymLogNorm
+
+try:
+    import pandas as pd
+except ModuleNotFoundError:
+    pd = None
 
 
 def grplot(
@@ -36,7 +40,7 @@ def grplot(
     X0 = np.array(X[0])
 
     if xscale is None:
-        if isinstance(X[0], pd.DataFrame):
+        if pd is not None and isinstance(X[0], pd.DataFrame):
             xscale = X[0].index
         elif X0.ndim > 1:
             xscale = np.arange(X[0].shape[-2])
@@ -47,7 +51,7 @@ def grplot(
                            X0.shape[-2] * xscale[1], xscale[1])
 
     if labels is None:
-        if isinstance(X[0], pd.DataFrame):
+        if pd is not None and isinstance(X[0], pd.DataFrame):
             labels = np.array(X[0].keys())
         elif X0.shape[-1] > 1 and X0.ndim > 1:
             labels = np.arange(X0.shape[-1]) + 1
@@ -163,7 +167,7 @@ def grplot(
         [axis.set_prop_cycle(None) for axis in ax]
         figs = fig or None
 
-    if not isinstance(xscale, pd.DatetimeIndex):
+    if pd is not None and not isinstance(xscale, pd.DatetimeIndex):
         locator = MaxNLocator(nbins=nlocbins, steps=[1, 2, 4, 8, 10])
 
     handles = []
@@ -226,7 +230,7 @@ def grplot(
                 )
             ax[i].tick_params(axis="both", which="both",
                               top=False, right=False)
-            if not isinstance(xscale, pd.DatetimeIndex):
+            if pd is not None and not isinstance(xscale, pd.DatetimeIndex):
                 ax[i].xaxis.set_major_locator(locator)
 
         handles.append(subhandles)
