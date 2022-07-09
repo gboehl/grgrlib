@@ -93,6 +93,3 @@ def fast_kde(x, bw=4.5):
     density = density / norm_factor
 
     return density, xmin, xmax
-
-
-logpdf = mvn_logpdf  # for legacy reasons
