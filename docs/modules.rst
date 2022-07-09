@@ -1,13 +1,6 @@
 Documentation
 ==================
 
-``grgrlib.datatools``
----------------------
-.. automodule:: grgrlib.datatools
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 ``grgrlib.plots``
 ------------------
 A collection of handy plotting functions.
@@ -17,11 +10,9 @@ A collection of handy plotting functions.
    :undoc-members:
    :show-inheritance:
 
-``grgrlib.optimize``
---------------------
-Hand-written optimizers. Currently only CMA-ES. Look for the documentation of `cmaes` (the UI) to understand its usage.
-
-.. automodule:: grgrlib.optimize
+``grgrlib.jaxed``
+-------------------
+.. automodule:: grgrlib.jaxed
    :members:
    :undoc-members:
    :show-inheritance:
@@ -33,9 +24,25 @@ Hand-written optimizers. Currently only CMA-ES. Look for the documentation of `c
    :undoc-members:
    :show-inheritance:
 
+``grgrlib.datatools``
+---------------------
+.. automodule:: grgrlib.datatools
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 ``grgrlib.multiprocessing``
 ---------------------------
 .. automodule:: grgrlib.multiprocessing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+``grgrlib.optimize``
+--------------------
+Hand-written optimizers. Currently only CMA-ES. Look for the documentation of `cmaes` (the UI) to understand its usage.
+
+.. automodule:: grgrlib.optimize
    :members:
    :undoc-members:
    :show-inheritance:
