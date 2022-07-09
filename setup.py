@@ -22,6 +22,11 @@ setup(
             "Programming Language :: Python :: 3.9",
     ],
     packages=find_packages(),
+    extras_require={
+     'njitted': ['numba'],
+     'jaxed': ['jax', 'jaxlib'],
+     'full': ['numba', 'jax', 'jaxlib'],
+    },
     install_requires=[
         'numpy',
         'scipy',
