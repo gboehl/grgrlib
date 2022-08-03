@@ -7,6 +7,7 @@ import functools
 import jax.numpy as jnp
 import scipy.sparse as ssp
 from numpy import ndarray, isnan
+from numpy.linalg import det
 from .plots import spy
 from jax.experimental.host_callback import id_print as jax_print
 from jax._src.api import (_check_callable, _check_input_dtype_jacfwd, _check_input_dtype_jacrev, _check_output_dtype_jacfwd, _check_output_dtype_jacrev, _ensure_index,
@@ -234,8 +235,12 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
     res['x'], res['niter'] = xi, cnt
     res['fun'] = func(xi)[0] if func_returns_jac else func(xi)
     res['jac'] = jacval
-    res['det'] = jnp.linalg.det(jacval) if (
-        jacval.shape[0] == jacval.shape[1]) else 0
+
+    if verbose_jac:
+        # only calculate determinant if requested
+        res['det'] = det(jacval) if (jacval.shape[0] == jacval.shape[1]) else 0
+    else:
+        res['det'] = None
 
     return res
 
