@@ -109,10 +109,10 @@ def grplot(
 
         # check if there are states that are always zero
         if line is not None:
-            selector += np.nanstd(line, 0) > tol
+            selector += np.nanstd(line, 0) >= tol
         if interval is not None:
-            selector += np.nanstd(interval[0], 0) > tol
-            selector += np.nanstd(interval[1], 0) > tol
+            selector += np.nanstd(interval[0], 0) >= tol
+            selector += np.nanstd(interval[1], 0) >= tol
         if bulk is not None:
             selector[:] = 1
 
