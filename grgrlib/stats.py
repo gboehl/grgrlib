@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from .njitted import mvn_logpdf, normal_pdf, normal_cdf
 
 
 def percentile(x, q=0.01):
