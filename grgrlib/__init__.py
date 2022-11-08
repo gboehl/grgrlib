@@ -5,6 +5,8 @@ from .econtools import *
 from .generic import *
 from .plots import *
 
+__version__ = '0.1.15'
+
 try:
     import chaospy
 except ModuleNotFoundError:

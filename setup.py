@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 from os import path
+from grgrlib import __version__
 
 # read the contents of the README file
 this_directory = path.abspath(path.dirname(__file__))
@@ -11,7 +12,7 @@ setup(
     long_description_content_type="text/x-rst",
     url="https://github.com/gboehl/grgrlib",
     name='grgrlib',
-    version='0.1.14',
+    version=__version__,
     author='Gregor Boehl',
     author_email='admin@gregorboehl.com',
     license='MIT',
