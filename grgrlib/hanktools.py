@@ -67,11 +67,7 @@ def get_ll(x, model, data, data_func, sigma_measurement, jac_info, pars, observa
         ss.update({p: x[pars.index(p)] for p in pars if '_COEF' not in p})
 
         if ss_func is not None:
-            if len(signature(ss_func).parameters) == 1:
-                print('hier')
-                ss.update(ss_func(ss))
-            else:
-                ss.update(ss_func(ss, x))
+            ss.update(ss_func(ss, x))
 
         if data_func is False:
             data_adj = data.copy()
