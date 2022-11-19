@@ -201,8 +201,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
 
         if func_returns_jac:
             fval, jacval = func(xi)
-            if isinstance(jacval, ssp._arrays.lil_array):
-                jacval = jacval.tocsr()
+            if sparse and not isinstance(jacval, ssp._arrays.csr_array):
+                jacval = ssp.csr_array(jacval)
         else:
             fval, jacval = func(xi), jac(xi)
 
