@@ -15,7 +15,7 @@ from jax._src.api import (_check_callable, _check_input_dtype_jacfwd, _check_inp
 
 
 def jvp_vmap(fun: Callable, argnums: Union[int, Sequence[int]] = 0):
-    """Vectorized (forward-mode) Jacobian-vector product of ``fun``. This is by large adopted from the implementation of jacfwd in jax._src.api.
+    """Vectorized (forward-mode) jacobian-vector product of ``fun``. This is by large adopted from the implementation of jacfwd in jax._src.api.
 
     Args:
       fun: Function whose value and Jacobian is to be computed.
@@ -37,6 +37,31 @@ def jvp_vmap(fun: Callable, argnums: Union[int, Sequence[int]] = 0):
         pushfwd = partial(_jvp, f_partial, dyn_args)
         y, jac = vmap(pushfwd, out_axes=(None, -1), in_axes=-1)(tangents)
 
+        return y, jac
+
+    return jacfun
+
+
+def vjp_vmap(fun: Callable, argnums: Union[int, Sequence[int]] = 0):
+    """Vectorized (reverse-mode) vector-jacobian product of ``fun``. This is by large adopted from the implementation of jacrev in jax._src.api.
+
+    Args:
+      fun: Function whose value and Jacobian are to be computed.
+      argnums: Optional, integer or sequence of integers. Specifies which
+        positional argument(s) to differentiate with respect to (default ``0``).
+
+    Returns:
+      A function with the same arguments as ``fun``, that evaluates the value and Jacobian of
+      ``fun`` using reverse-mode automatic differentiation.
+    """
+    _check_callable(fun)
+
+    def jacfun(args, tangents, **kwargs):
+        f = lu.wrap_init(fun, kwargs)
+        f_partial, dyn_args = argnums_partial(f, argnums, args,
+                                              require_static_args_hashable=False)
+        y, pullback = _vjp(f_partial, *dyn_args)
+        jac = vmap(pullback)(tangents)
         return y, jac
 
     return jacfun
