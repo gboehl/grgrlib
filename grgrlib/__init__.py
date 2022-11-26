@@ -5,7 +5,7 @@ from .econtools import *
 from .generic import *
 from .plots import *
 
-__version__ = '0.1.17'
+__version__ = '0.1.18'
 
 try:
     import chaospy

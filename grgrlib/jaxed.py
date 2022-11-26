@@ -280,8 +280,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
         jacval, (ssp._arrays.csr_array, ssp._arrays.lil_array)) else jacval
 
     res['x'], res['niter'] = xi, cnt
-    res['fun'] = func(xi)[0] if func_returns_jac else func(xi)
-    res['jac'] = jacval
+    res['fun'], res['jac'] = fval, jacval
 
     if verbose_jac:
         # only calculate determinant if requested
