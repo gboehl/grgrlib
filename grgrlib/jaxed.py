@@ -29,7 +29,7 @@ def jvp_vmap(fun: Callable, argnums: Union[int, Sequence[int]] = 0):
     _check_callable(fun)
     argnums = _ensure_index(argnums)
 
-    def jacfun(args, tangents, **kwargs):
+    def jvpfun(args, tangents, **kwargs):
 
         f = lu.wrap_init(fun, kwargs)
         f_partial, dyn_args = argnums_partial(
@@ -39,7 +39,7 @@ def jvp_vmap(fun: Callable, argnums: Union[int, Sequence[int]] = 0):
 
         return y, jac
 
-    return jacfun
+    return jvpfun
 
 
 def vjp_vmap(fun: Callable, argnums: Union[int, Sequence[int]] = 0):
@@ -56,7 +56,7 @@ def vjp_vmap(fun: Callable, argnums: Union[int, Sequence[int]] = 0):
     """
     _check_callable(fun)
 
-    def jacfun(args, tangents, **kwargs):
+    def vjpfun(args, tangents, **kwargs):
         f = lu.wrap_init(fun, kwargs)
         f_partial, dyn_args = argnums_partial(f, argnums, args,
                                               require_static_args_hashable=False)
@@ -64,7 +64,7 @@ def vjp_vmap(fun: Callable, argnums: Union[int, Sequence[int]] = 0):
         jac = vmap(pullback)(tangents)
         return y, jac
 
-    return jacfun
+    return vjpfun
 
 
 def jacfwd_and_val(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
@@ -162,7 +162,7 @@ def jacrev_and_val(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
     return jacfun
 
 
-def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=None, func_returns_jac=False, inspect_jac=False, verbose=False, verbose_jac=False):
+def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, rtol=None, sparse=False, solver=None, func_returns_jac=False, inspect_jac=False, verbose=False, verbose_jac=False):
     """Newton method for root finding using automatic differenciation with jax. The argument `func` must be jittable with jax.
 
     ...
@@ -201,6 +201,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
     st = time.time()
     verbose_jac |= inspect_jac
     verbose |= verbose_jac
+    rtol = rtol or tol
 
     if jac is None and not func_returns_jac:
         if sparse:
@@ -266,7 +267,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, sparse=False, solver=No
             res['message'] = f"Maximum number of {maxit} iterations reached."
             break
 
-        if eps < tol:
+        if eps < rtol:
             res['success'] = True
             res['message'] = "The solution converged."
             break
@@ -344,4 +345,5 @@ def newton_jax_jittable(func, init, jac=None, maxit=30, tol=1e-8):
     return tain[0], func(tain[0]), tain[2] < maxit, eps < tol
 
 
+amax = jax.jit(lambda x: jnp.abs(x).max())
 newton_jax_jit = jax.jit(newton_jax_jittable, static_argnums=(0, 2, 3, 4))
