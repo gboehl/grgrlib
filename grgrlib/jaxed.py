@@ -226,11 +226,13 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, rtol=None, sparse=False
         cnt += 1
 
         if func_returns_jac:
-            fval, jacval = func(xi)
+            fout = func(xi)
+            fval, jacval, aux = fout if len(fout) == 3 else (*fout, None)
             if sparse and not isinstance(jacval, ssp._arrays.csr_array):
                 jacval = ssp.csr_array(jacval)
         else:
-            fval, jacval = func(xi), jac(xi)
+            fout, jacval = func(xi), jac(xi)
+            fval, aux = fout if len(fout) == 2 else (fout, None)
 
         jac_is_nan = isnan(jacval.data) if isinstance(
             jacval, ssp._arrays.csr_array) else jnp.isnan(jacval)
@@ -282,6 +284,8 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, rtol=None, sparse=False
 
     res['x'], res['niter'] = xi, cnt
     res['fun'], res['jac'] = fval, jacval
+    if aux is not None:
+        res['aux'] = aux
 
     if verbose_jac:
         # only calculate determinant if requested
