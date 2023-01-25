@@ -10,8 +10,13 @@ from numpy import ndarray, isnan
 from numpy.linalg import det
 from .plots import spy
 from jax.experimental.host_callback import id_print as jax_print
-from jax._src.api import (_check_callable, _check_input_dtype_jacfwd, _check_input_dtype_jacrev, _check_output_dtype_jacfwd, _check_output_dtype_jacrev, _ensure_index,
-                          _jvp, _vjp, _std_basis, _jacfwd_unravel, _jacrev_unravel, lu, argnums_partial, tree_map, tree_structure, tree_transpose, partial, Callable, Sequence, Union, vmap)
+from jax._src.api import (_check_input_dtype_jacfwd, _check_input_dtype_jacrev, _check_output_dtype_jacfwd, _check_output_dtype_jacrev, _ensure_index, _jvp,
+                          _vjp, _std_basis, _jacfwd_unravel, _jacrev_unravel, lu, argnums_partial, tree_map, tree_structure, tree_transpose, partial, Callable, Sequence, Union, vmap)
+# fix import location for jax 0.4.1
+try:
+    from jax._src.api import _check_callable
+except ImportError:
+    from jax._src.api_util import check_callable as _check_callable
 
 
 def jvp_vmap(fun: Callable, argnums: Union[int, Sequence[int]] = 0):
