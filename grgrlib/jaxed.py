@@ -258,7 +258,7 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, rtol=None, sparse=False
 
         if verbose:
             ltime = time.time() - st
-            info_str = f'    Iteration {cnt:3d} | max error {eps:.2e} | lapsed {ltime:3.4f}'
+            info_str = f'    Iteration {cnt:3d} | max. error {eps:.2e} | lapsed {ltime:3.4f}'
             if verbose_jac:
                 jacval = jacval.toarray() if sparse else jacval
                 jacdet = jnp.linalg.det(jacval) if (
@@ -301,21 +301,45 @@ def newton_jax(func, init, jac=None, maxit=30, tol=1e-8, rtol=None, sparse=False
     return res
 
 
-def newton_jax_jittable(func, init, jac=None, maxit=30, tol=1e-8):
-    """Newton method for root finding using automatic differenciation with jax BUT running in pure jitted jax. The argument `func` must be jittable with jax. Remember to check the error flags!
+def newton_cond_func(carry):
+    (xi, eps, cnt), (func, verbose, maxit, tol) = carry
+    cond = cnt < maxit
+    cond = jnp.logical_and(cond, eps > tol)
+    cond = jnp.logical_and(cond, ~jnp.isnan(eps))
+    jax.debug.callback(callback_func, cnt, eps, verbose=verbose)
+    return cond
 
-    Note that when compiling this function without context, it is necessary to have the function as a static argument. This would imply that AD does not work on functions including a jitted version of this function, which renders jax rather useless. The major advantage of having this function is to include the jittable version (not the jitted one) directly into to-be-jitted code _together with the function for which the root is needed_.
 
+def newton_body_func(carry):
+    (xi, eps, cnt), (func, verbose, maxit, tol) = carry
+    xi_old = xi
+    f, jac = func(xi)
+    xi -= jax.scipy.linalg.solve(jac, f)
+    eps = amax(xi-xi_old)
+    return (xi, eps, cnt+1), (func, verbose, maxit, tol)
+
+
+def callback_func(cnt, err, dampening=None, ltime=None, verbose=True):
+    mess = f'    Iteration {cnt:3d} | max. error {err:.2e}'
+    if dampening is not None:
+        mess += f' | dampening {dampening:1.3f}'
+    if ltime is not None:
+        mess += f' | lapsed {ltime:3.4f}s'
+    if verbose:
+        print(mess)
+
+
+@jax.jit
+def newton_jax_jit(func, x_init, maxit=30, tol=1e-8, verbose=True):
+    """Newton method for root finding using automatic differentiation with jax and running in jitted jax.
     ...
 
     Parameters
     ----------
     func : callable
-        Function f for which f(x)=0 should be found. Must be jittable with jax
-    init : array
+        Function returning (y, jac) where f(x)=y=0 should be found and jac is the jacobian. Must be jittable with jax. Could e.g. be the output of jacfwd_and_val.
+    x_init : array
         Initial values of x
-    jac : callable, optional
-        Funciton that returns the jacobian. If not provided, jax.jacfwd is used
     maxit : int, optional
         Maximum number of iterations
     tol : float, optional
@@ -323,36 +347,11 @@ def newton_jax_jittable(func, init, jac=None, maxit=30, tol=1e-8):
 
     Returns
     -------
-    res: (xopt, fopt, niter, success)
+    res: (xopt, (fopt, jacopt), niter, success)
     """
-
-    if jac is None:
-        jac = jax.jacfwd(func)
-
-    xi = jnp.array(init)
-
-    def cond_func(tain):
-        xi, xold, cnt = tain
-        eps = jnp.abs(xi - xold).max()
-
-        cond = cnt < maxit
-        cond &= eps > tol
-        cond &= ~jnp.isnan(eps)
-
-        return cond
-
-    def body_func(tain):
-        (xi, _, cnt) = tain
-        cnt += 1
-        xold = xi
-        xi -= jax.scipy.linalg.solve(jac(xi), func(xi))
-        return (xi, xold, cnt)
-
-    tain = jax.lax.while_loop(cond_func, body_func, (xi, xi + 1, 0))
-    eps = jnp.abs(tain[0] - tain[1]).max()
-
-    return tain[0], func(tain[0]), tain[2] < maxit, eps < tol
+    (xi, eps, cnt), _ = jax.lax.while_loop(newton_cond_func,
+                                           newton_body_func, ((x_init, 1., 0), (func, verbose, maxit, tol)))
+    return xi, func(xi), cnt, eps > tol
 
 
 amax = jax.jit(lambda x: jnp.abs(x).max())
-newton_jax_jit = jax.jit(newton_jax_jittable, static_argnums=(0, 2, 3, 4))
