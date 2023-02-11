@@ -306,6 +306,7 @@ def newton_cond_func(carry):
     cond = cnt < maxit
     cond = jnp.logical_and(cond, eps > tol)
     cond = jnp.logical_and(cond, ~jnp.isnan(eps))
+    verbose = jnp.logical_and(cnt, verbose)
     jax.debug.callback(callback_func, cnt, eps, verbose=verbose)
     return cond
 
