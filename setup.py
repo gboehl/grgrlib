@@ -31,7 +31,7 @@ setup(
     },
     install_requires=[
         'numpy',
-        'scipy>=1.8.0',
+        'scipy',
         'matplotlib',
     ],
     include_package_data=True,
