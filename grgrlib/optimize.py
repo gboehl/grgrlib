@@ -1,4 +1,3 @@
-#!/bin/python
 # -*- coding: utf-8 -*-
 
 import time
@@ -56,7 +55,8 @@ def cmaes(
 
     """
 
-    es = CMAES(xstart, sigma, popsize=popsize, biject=biject, verbose=verbose, **args)
+    es = CMAES(xstart, sigma, popsize=popsize,
+               biject=biject, verbose=verbose, **args)
 
     es.bfunc = (lambda x: 1 / (1 + np.exp(x))) if biject else (lambda x: x)
     es.objective_fct = lambda x: objective_fct(es.bfunc(x))
@@ -150,7 +150,8 @@ class CMAESParameters(object):
         # set number of parents/points/solutions for recombination
         self.mu = int(mu or (self.lam / 2))
 
-        self.maxfev = maxfev or 100 * self.lam + 150 * (ndim + 3) ** 2 * self.lam ** 0.5
+        self.maxfev = maxfev or 100 * self.lam + \
+            150 * (ndim + 3) ** 2 * self.lam ** 0.5
 
         if active is None:
             active = False if scaled else True
@@ -179,7 +180,8 @@ class CMAESParameters(object):
                 - np.log(np.arange(self.mu_mean) + 1)
                 - np.log(self.lam / self.mu_mean)
             )
-            self.weights_mean = weights_mean / np.sum(weights_mean[: self.mu_mean])
+            self.weights_mean = weights_mean / \
+                np.sum(weights_mean[: self.mu_mean])
         else:
             self.weights_mean = self.weights
 
@@ -199,7 +201,8 @@ class CMAESParameters(object):
         # define learning rate of rank-mu update
         def_cmu = np.minimum(
             1 - self.c1,
-            2 * (self.mueff - 2 + 1 / self.mueff) / ((ndim + 2) ** 2 + self.mueff),
+            2 * (self.mueff - 2 + 1 / self.mueff) /
+            ((ndim + 2) ** 2 + self.mueff),
         )
         self.cmu = def_cmu if cmu is None else cmu
 
@@ -265,20 +268,21 @@ class CMAESParameters(object):
                 value = np.abs(1 + self.c1 / self.cmu)
 
                 if self.weights[-1] < 0:
-                    factor = np.abs(value / np.sum(self.weights[self.mu :]))
-                    self.weights[self.mu :] *= factor
+                    factor = np.abs(value / np.sum(self.weights[self.mu:]))
+                    self.weights[self.mu:] *= factor
 
                 value = np.abs((1 - self.c1 - self.cmu) / self.cmu / self.ndim)
 
                 # if nothing to limit
-                if np.sum(self.weights[self.mu :]) < -value:
-                    factor = np.abs(value / np.sum(self.weights[self.mu :]))
+                if np.sum(self.weights[self.mu:]) < -value:
+                    factor = np.abs(value / np.sum(self.weights[self.mu:]))
                     if factor < 1:
-                        self.weights[self.mu :] *= factor
+                        self.weights[self.mu:] *= factor
 
-            sum_neg = np.sum(self.weights[self.mu :])
+            sum_neg = np.sum(self.weights[self.mu:])
             mueffminus = (
-                sum_neg ** 2 / np.sum(self.weights[self.mu :] ** 2) if sum_neg else 0
+                sum_neg ** 2 /
+                np.sum(self.weights[self.mu:] ** 2) if sum_neg else 0
             )
             value = np.abs(1 + 2 * mueffminus / (self.mueff + 2))
 
@@ -286,7 +290,7 @@ class CMAESParameters(object):
             if sum_neg < -value:
                 factor = np.abs(value / sum_neg)
                 if factor < 1:
-                    self.weights[self.mu :] *= factor
+                    self.weights[self.mu:] *= factor
 
         return
 
@@ -372,7 +376,7 @@ class CMAES(object):
         self.best.update(xs[0], self.fs[0], self.counteval)
 
         # compute new weighted mean value via recombination
-        self.xmean = xs[0 : par.mu_mean].T @ par.weights_mean[: par.mu_mean]
+        self.xmean = xs[0: par.mu_mean].T @ par.weights_mean[: par.mu_mean]
 
         # update evolution paths via cumulation:
         y = self.xmean - xold
@@ -406,7 +410,8 @@ class CMAES(object):
                 mahalano = np.sum((self.invsqrt @ (xs[k] - xold)) ** 2)
                 wk *= N * self.sigma ** 2 / mahalano
             self.C += (
-                wk * par.cmu / self.sigma ** 2 * np.outer(xs[k] - xold, xs[k] - xold)
+                wk * par.cmu / self.sigma ** 2 *
+                np.outer(xs[k] - xold, xs[k] - xold)
             )
 
         # adapt step-size

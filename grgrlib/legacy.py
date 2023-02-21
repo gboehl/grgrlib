@@ -1,4 +1,3 @@
-#!/bin/python
 # -*- coding: utf-8 -*-
 """
 this file contains functions that are not activly developed anymore and only provided for reproducibility purposes
