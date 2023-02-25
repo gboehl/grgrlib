@@ -483,7 +483,7 @@ def grhist2d(x, y=None, bins=10, ax=None, alpha=None):
     return ax, (xedges, yedges)
 
 
-def grbar3d(x, bounds=None, xedges=None, yedges=None, width=1, depth=1, ax=None, figsize=None, **kwargs):
+def grbar3d(x, bounds=None, xedges=None, yedges=None, width=1, depth=1, colors=None, cmap=None, ax=None, figsize=None, **kwargs):
 
     if ax is None:
         fig = plt.figure(figsize=figsize)
@@ -491,6 +491,9 @@ def grbar3d(x, bounds=None, xedges=None, yedges=None, width=1, depth=1, ax=None,
 
     xedges = np.linspace(*bounds[0], x.shape[0]) if xedges is None else xedges
     yedges = np.linspace(*bounds[1], x.shape[1]) if yedges is None else yedges
+    cmap = plt.cm.magma if cmap is None else cmap
+    colors = cmap((x.flatten() - x.min())/(x.max() - x.min())
+                  ) if colors is None else colors
 
     # xpos, ypos = np.meshgrid(xedges, yedges)
     xpos, ypos = np.meshgrid(xedges, yedges, indexing="ij")
@@ -501,7 +504,8 @@ def grbar3d(x, bounds=None, xedges=None, yedges=None, width=1, depth=1, ax=None,
     dx = dy = 0.5 * np.ones_like(zpos)
     dz = x.ravel()
 
-    ax.bar3d(xpos, ypos, zpos, width, depth, dz, shade=True, **kwargs)
+    ax.bar3d(xpos, ypos, zpos, width, depth, dz,
+             shade=True, color=colors, **kwargs)
 
     return ax, (xedges, yedges)
 
