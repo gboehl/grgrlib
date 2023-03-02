@@ -483,7 +483,7 @@ def grhist2d(x, y=None, bins=10, ax=None, alpha=None):
     return ax, (xedges, yedges)
 
 
-def grbar3d(x, bounds=None, xedges=None, yedges=None, width=1, depth=1, colors=None, cmap=None, ax=None, figsize=None, **kwargs):
+def grbar3d(x, bounds=None, xedges=None, yedges=None, width=1, depth=1, colors=None, cmap=None, ax=None, figsize=None, unset_pane_color=True, **kwargs):
 
     if ax is None:
         fig = plt.figure(figsize=figsize)
@@ -506,6 +506,10 @@ def grbar3d(x, bounds=None, xedges=None, yedges=None, width=1, depth=1, colors=N
 
     ax.bar3d(xpos, ypos, zpos, width, depth, dz,
              shade=True, color=colors, **kwargs)
+    if unset_pane_color:
+        ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
 
     return ax, (xedges, yedges)
 
