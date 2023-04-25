@@ -367,7 +367,7 @@ def spy(M, ax=None, cmap="inferno"):
         frc = max(min(s0 / s1, 2), 0.5)
         fig, ax = plt.subplots(1, 1, figsize=(5 + 2 / frc, frc * 5 + 2))
 
-    ax.imshow(np.log10(1e-15 + np.abs(M)), cmap=cmap)
+    ax.imshow(np.log10(1e-15 + np.abs(M)), cmap=cmap, aspect='auto')
 
     if fig_exists:
         fig.tight_layout()
@@ -442,7 +442,7 @@ def grheat(
         extent = bounds
 
     img = ax.imshow(X, cmap=cmap, extent=extent,
-                    vmin=np.nanmin(X), vmax=np.nanmax(X))
+                    vmin=np.nanmin(X), vmax=np.nanmax(X), aspect='auto')
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
