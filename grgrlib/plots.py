@@ -396,6 +396,7 @@ def grheat(
     ax=None,
     draw_colorbar=None,
     cmap=None,
+    **kwargs
 ):
     """Simple interface to a heatmap (uses matplotlib's `imshow`).
 
@@ -408,6 +409,10 @@ def grheat(
     xlabel : str (optional)
     ylabel : str (optional)
     zlabel : str (optional)
+    ax : array (optional)
+    draw_colorbar : bool (optional)
+    cmap : matplotlib colormap (optional)
+    kwargs : any argument passet forward to imshow
     """
 
     draw_colorbar = True if draw_colorbar is None else draw_colorbar
@@ -420,29 +425,16 @@ def grheat(
 
     if isinstance(bounds, tuple):
         if isinstance(bounds[0], tuple):
-            extent = [
-                *bounds[0],
-                *bounds[1],
-            ]
+            extent = [*bounds[0], *bounds[1]]
         else:
-            extent = [
-                bounds[0],
-                bounds[1],
-                bounds[0],
-                bounds[1],
-            ]
+            extent = [bounds[0], bounds[1], bounds[0], bounds[1]]
     elif isinstance(bounds, (float, int)):
-        extent = [
-            -bounds,
-            bounds,
-            -bounds,
-            bounds,
-        ]
+        extent = [-bounds, bounds, -bounds, bounds]
     else:
         extent = bounds
 
     img = ax.imshow(X, cmap=cmap, extent=extent,
-                    vmin=np.nanmin(X), vmax=np.nanmax(X), aspect='auto')
+                    vmin=np.nanmin(X), vmax=np.nanmax(X), aspect='auto', origin='lower', **kwargs)
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
