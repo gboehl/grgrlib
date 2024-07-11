@@ -8,7 +8,7 @@ from .__version__ import __version__
 
 try:
     import chaospy
-except ModuleNotFoundError:
+except:
     chaospy = None
 
 if chaospy is not None:
