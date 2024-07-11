@@ -8,7 +8,7 @@ try:
     import chaospy
 
     chaospy_loaded = True
-except ModuleNotFoundError:
+except:
     chaospy_loaded = False
 
 
