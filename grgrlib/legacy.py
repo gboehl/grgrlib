@@ -2,7 +2,7 @@
 """
 this file contains functions that are not activly developed anymore and only provided for reproducibility purposes
 """
-
+import tqdm
 
 def tmcmc(
     self,
@@ -33,7 +33,7 @@ def tmcmc(
     pars = prior_sampler(
         self, nwalks, check_likelihood=check_likelihood, verbose=verbose)
 
-    x = get_par(self, "prior_mean", asdict=False,
+    x = self.get_par("prior_mean", asdict=False,
                 full=False, verbose=verbose > 1)
 
     pbar = tqdm.tqdm(total=ntemps, unit="temp(s)", dynamic_ncols=True)
